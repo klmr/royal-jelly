@@ -155,4 +155,4 @@ show-help:
 		} \
 		printf "\n"; \
 	}' \
-	| more
+	| more $(shell test $(shell uname) == Darwin && echo '--no-init --raw-control-chars')
