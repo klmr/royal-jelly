@@ -79,7 +79,7 @@ data/mapped/%.bam: data/trimmed/%.fastq.gz ${index} ${annotation}
 		"STAR --runThreadN 6 --genomeDir '$(dir ${index})' \
 		--runMode alignReads --alignEndsType Local \
 		--sjdbGTFfile '${annotation}' \
-		--readFilesIn '$<' --readFilesCommand zcat \
+		--readFilesIn '$<' --readFilesCommand 'gunzip -c' \
 		--outSAMtype BAM SortedByCoordinate --outFileNamePrefix '$(basename $@)'"
 	mv '$(basename $@)Aligned.sortedByCoord.out.bam' '$@'
 
