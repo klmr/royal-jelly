@@ -92,6 +92,16 @@ data/rrna-contamination/%.tsv: data/mapped/%.bam ${rrna-annotation}
 	@mkdir -p "$(dir $@)"
 	${bsub} "featureCounts -t exon -g gene_id -M -a ${rrna-annotation} -o '$@' '$<'"
 
+quantification = $(addsuffix .tsv,$(addprefix data/quantification/,$(basename $(basename $(notdir ${mapped-reads})))))
+
+.PHONY: quantification
+## Quantify exon-level gene expression
+quantification: ${quantification}
+
+data/quantification/%.tsv: data/mapped/%.bam ${annotation}
+	@mkdir -p "$(dir $@)"
+	${bsub} "featureCounts -t exon -g gene_id -M -a ${annotation} -o '$@' '$<'"
+
 .PHONY: qc-report
 ## Generate aggregate report from individual tool/QC outputs
 qc-report: data/qc/multiqc_report.html
