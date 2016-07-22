@@ -106,9 +106,13 @@ data/quantification/%.tsv: data/mapped/%.bam ${annotation}
 ## Generate aggregate report from individual tool/QC outputs
 qc-report: data/qc/multiqc_report.html
 
-data/qc/multiqc_report.html: ${trimmed-files} ${mapped-reads} ${rrna-contamination}
+data/qc/multiqc_report.html: ${trimmed-files} ${mapped-reads} ${quantification}
 	multiqc --force --outdir data/qc \
-		data/trimmed data/qc data/mapped data/rrna-contamination
+		data/trimmed \
+		data/qc \
+		data/mapped \
+		data/rrna-contamination \
+		data/quantification
 
 .DEFAULT_GOAL := show-help
 
