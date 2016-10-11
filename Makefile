@@ -18,8 +18,8 @@ read-files = $(foreach i,R1 R2,$(subst /mapped/,/trimmed/,$(subst _001,_${i}_001
 
 sequences := ../shared/reference
 index-dir := ../shared/index
-apis-reference = ${sequences}/apis_mellifera/Apis_mellifera.GCA_000002195.1.dna.toplevel.fa.gz
-homo-reference = ${sequences}/homo_sapiens/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
+apis-reference = ${sequences}/apis_mellifera/Apis_mellifera.GCA_000002195.1.dna.toplevel.fa
+homo-reference = ${sequences}/homo_sapiens/Homo_sapiens.GRCh38.dna.primary_assembly.fa
 viral-reference = ${sequences}/bee-viruses/bee_viruses.fasta
 viral-index = ${index-dir}/bee-viruses/Genome
 index = ${index-dir}/bee-contamination/Genome
@@ -42,7 +42,8 @@ mapped-reads = $(subst .fastq.gz,.bam,$(subst _R1_,_,$(call keep,_R1_,$(subst /t
 
 ${apis-reference}:
 	@$(mkdir)
-	wget ftp://ftp.ensemblgenomes.org/pub/release-32/metazoa/fasta/apis_mellifera/dna/$(notdir $@) -O '$@'
+	wget ftp://ftp.ensemblgenomes.org/pub/release-32/metazoa/fasta/apis_mellifera/dna/$(notdir $@).gz -O '$@.gz'
+	gunzip $@
 
 ${sequences}/bee-viruses/%.fasta:
 	@$(mkdir)
@@ -57,7 +58,8 @@ ${viral-reference}: ${viral-references}
 
 ${homo-reference}:
 	@$(mkdir)
-	wget ftp://ftp.ensembl.org/pub/release-85/fasta/homo_sapiens/dna/$(notdir $@) -O '$@'
+	wget ftp://ftp.ensembl.org/pub/release-85/fasta/homo_sapiens/dna/$(notdir $@).gz -O '$@.gz'
+	gunzip $@
 
 #
 # Build mapping indices
