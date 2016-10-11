@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+cat <(gunzip -c "$1") <(gunzip -c "$2") \
+| gzip -c \
+> "$3"

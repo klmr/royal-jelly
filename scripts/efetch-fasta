@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+accession="$1"
+output="$2"
+
+base_uri='http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?'
+efetch_uri="${base_uri}db=nuccore&id=$accession&rettype=fasta"
+wget --quiet "$efetch_uri" -O "$output"
