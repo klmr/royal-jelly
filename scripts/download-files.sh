@@ -1,0 +1,1 @@
+samples2files -K $(json-value .client.id ~/.config/illumina.basespace.json) -S $(json-value .client.secret ~/.config/illumina.basespace.json) -A $(json-value .access_token ~/.config/illumina.basespace.json) -p 32227199 -o raw
