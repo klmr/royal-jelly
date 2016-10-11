@@ -73,7 +73,7 @@ ${index}: ${apis-reference} ${viral-reference} ${homo-reference}
 	@$(mkdir)
 	${bsub} -M24000 -R'select[mem>24000] rusage[mem=24000]' \
 		"STAR --runMode genomeGenerate --genomeDir '$(dir $@)' \
-		--genomeFastaFiles '$+'"
+		--genomeFastaFiles $+"
 	rm Log.out
 
 #
