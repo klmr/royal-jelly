@@ -21,6 +21,7 @@ apis-reference = ${sequences}/apis_mellifera/Apis_mellifera.GCA_000002195.1.dna.
 homo-reference = ${sequences}/homo_sapiens/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
 viral-reference = ${sequences}/bee-viruses/bee_viruses.fasta
 viral-index = ${index-dir}/bee-viruses/Genome
+index = ${index-dir}/bee-contamination/Genome
 viral-references = $(foreach i,$(shell cut -d, -f5 supporting/bee-virus-list.csv),${sequences}/bee-viruses/$i.fasta)
 raw-reads = $(shell ls raw/*.fastq.gz)
 merged-files = $(addprefix data/merged/,$(notdir $(subst L001,merged,$(call keep,L001,${raw-reads}))))
@@ -50,7 +51,7 @@ viral-reference: ${viral-reference}
 ${viral-reference}: ${viral-references}
 	cat ${sequences}/bee-viruses/*.fasta > '$@'
 
-${human-reference}:
+${homo-reference}:
 	@$(mkdir)
 	wget ftp://ftp.ensembl.org/pub/release-85/fasta/homo_sapiens/dna/$(notdir $@) -O '$@'
 
@@ -61,7 +62,14 @@ ${human-reference}:
 ${viral-index}: ${viral-reference}
 	@$(mkdir)
 	STAR --runMode genomeGenerate --genomeSAindexNbases 3 \
-		--genomeDir '$(dir $@)' --genomeFastaFiles '$<'
+		--genomeDir '$(dir $@)' --genomeFastaFiles '$+'
+	rm Log.out
+
+${index}: ${apis-reference} ${viral-reference} ${homo-reference}
+	@$(mkdir)
+	${bsub} -M24000 -R'select[mem>24000] rusage[mem=24000]' \
+		"STAR --runMode genomeGenerate --genomeDir '$(dir $@)' \
+		--genomeFastaFiles '$+'"
 	rm Log.out
 
 #
