@@ -78,7 +78,7 @@ define build-index
 ${bsub} -M${MEM} -R'select[mem>${MEM}] rusage[mem=${MEM}]' \
 	"STAR --runMode genomeGenerate --genomeDir '$(dir $@)' \
 	--genomeFastaFiles $+"
-	rm -r _STARtmp Log.out
+	rm -rf _STARtmp Log.out
 endef
 
 ${apis-index}: ${apis-reference}
