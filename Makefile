@@ -29,13 +29,15 @@ viral-references = $(foreach i,$(shell cut -d, -f5 supporting/bee-virus-list.csv
 raw-reads = $(shell ls raw/*.fastq.gz)
 merged-files = $(addprefix data/merged/,$(notdir $(subst L001,merged,$(call keep,L001,${raw-reads}))))
 .PRECIOUS: ${merged-files}
+
 long-trimmed-libraries = $(call library-files,long,data/trimmed/long/)
 short-trimmed-libraries = $(call library-files,short,data/trimmed/short/)
-.PRECIOUS: ${long-trimmed-libraries}
-.PRECIOUS: ${short-trimmed-libraries}
+trimmed-libraries = ${long-trimmed-libraries} ${short-trimmed-libraries}
+.PRECIOUS: ${trimmed-libraries}
+
 fastqc-files = $(patsubst %.fastq.gz,%_fastqc.zip,$(call library-files,long,data/qc/long/) $(call library-files,short,data/qc/short/))
 
-mapped-reads = $(subst .fastq.gz,.bam,$(subst _R1_,_,$(call keep,_R1_,$(subst /trimmed/,/mapped/,${long-trimmed-libraries}, ${short-trimmed-libraries}))))
+mapped-reads = $(subst .fastq.gz,.bam,$(subst _R1_,_,$(call keep,_R1_,$(subst /trimmed/,/mapped/,${trimmed-libraries}))))
 .PRECIOUS: ${mapped-reads}
 
 #
