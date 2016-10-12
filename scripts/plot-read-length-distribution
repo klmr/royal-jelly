@@ -11,10 +11,8 @@ sys$run({
     libraries = sub('_merged_.*', '', tools::file_path_sans_ext(basename(filenames)))
     names(filenames) = libraries
 
-    lengths = lapply(filenames,
-                     p(sample, 100000) %.% as.numeric %.% readLines) %>%
-        Map(value ~ name -> data.frame(Length = value, Library = name),
-            ., names(.)) %>%
+    lengths = lapply(filenames, p(sample, 100000) %.% as.numeric %.% readLines) %>%
+        Map(value ~ name -> data.frame(Length = value, Library = name), ., names(.)) %>%
         do.call(rbind, .)
 
     modules::import_package('ggplot2', attach = TRUE)
