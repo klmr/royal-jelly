@@ -122,7 +122,7 @@ trim-long: ${long-trimmed-libraries}
 
 data/trimmed/long/%R1_001.fastq.gz: data/merged/%R1_001.fastq.gz data/merged/%R2_001.fastq.gz
 	@$(mkdir)
-	${bsub} "cutadapt -a AGATCGGAAGAGC -A AGATCGGAAGAGC \
+	${bsub} -n3 "cutadapt -a AGATCGGAAGAGC -A AGATCGGAAGAGC \
 		--minimum-length 10 \
 		-o '$@' -p '$(subst _R1_,_R2_,$@)' '$(firstword $+)' '$(lastword $+)' \
 		> '${@:.fastq.gz=.log}'"
@@ -136,7 +136,7 @@ trim-short: ${short-trimmed-libraries}
 
 data/trimmed/short/%R1_001.fastq.gz: data/merged/%R1_001.fastq.gz data/merged/%R2_001.fastq.gz
 	@$(mkdir)
-	${bsub} "cutadapt -a NNNNTGGAATTCTCGGGTGCCAAGG -A NNNNGATCGTCGGACTGTAGAACTCTGAAC \
+	${bsub} -n3 "cutadapt -a NNNNTGGAATTCTCGGGTGCCAAGG -A NNNNGATCGTCGGACTGTAGAACTCTGAAC \
 		--minimum-length 10 \
 		-o '$@' -p '$(subst _R1_,_R2_,$@)' '$(firstword $+)' '$(lastword $+)' \
 		> '${@:.fastq.gz=.log}'"
