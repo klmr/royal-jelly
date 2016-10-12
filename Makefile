@@ -36,6 +36,7 @@ trimmed-libraries = ${long-trimmed-libraries} ${short-trimmed-libraries}
 .PRECIOUS: ${trimmed-libraries}
 
 fastqc-files = $(patsubst %.fastq.gz,%_fastqc.zip,$(call library-files,long,data/qc/long/) $(call library-files,short,data/qc/short/))
+read-lengths = $(subst .fastq.gz,.txt,$(subst /trimmed/,/qc/read-lengths/,${trimmed-libraries}))
 
 mapped-reads = $(subst .fastq.gz,.bam,$(subst _R1_,_,$(call keep,_R1_,$(subst /trimmed/,/mapped/,${trimmed-libraries}))))
 .PRECIOUS: ${mapped-reads}
@@ -140,6 +141,15 @@ qc-report: data/qc/multiqc_report.html
 data/qc/multiqc_report.html: ${fastqc-files}
 	multiqc --force --outdir data/qc data/qc
 
+.PHONY: read-lengths
+## Compute length distributions
+read-lengths: ${read-lengths}
+
+${read-lengths}: ${trimmed-libraries}
+
+data/qc/read-lengths/%.txt: data/trimmed/%.fastq.gz bin/line-lengths
+	@$(mkdir)
+	${bsub} "gunzip -c '$<' | bin/line-lengths > '$@'"
 #
 # Remove viral contamination
 #
