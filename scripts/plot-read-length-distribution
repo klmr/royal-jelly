@@ -21,7 +21,9 @@ sys$run({
 
     p = ggplot(lengths) +
         aes(Length, color = Library) +
-        geom_density()
+        geom_density() +
+        scale_y_log10() +
+        theme_bw()
 
     ggsave(output, p)
 })
