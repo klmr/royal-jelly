@@ -12,6 +12,8 @@ raw-library-files = $(shell echo $(addsuffix *_L001_*,$(addprefix raw/,$(shell g
 library-files = $(subst _L001_,_merged_,$(addprefix $2,$(notdir $(call raw-library-files,$1))))
 read-files = $(foreach i,R1 R2,$(subst /mapped/,/trimmed/,$(subst _001,_${i}_001,${1:.bam=.fastq.gz})))
 
+include binaries.make
+
 #
 # Helper variables
 #
