@@ -1,0 +1,27 @@
+#!/usr/bin/env Rscript
+
+sys = modules::import('klmr/sys')
+modules::import('klmr/functional')
+modules::import('klmr/functional/lambda')
+
+sys$run({
+    output = sys$args[1]
+    filenames = sys$args[-1]
+    libraries = tools::file_path_sans_ext(basename(filenames))
+    names(filenames) = libraries
+
+    lengths = lapply(filenames, as.numeric %.% readLines) %>%
+        Map(value ~ name -> data.frame(Length = value, Library = name),
+            ., names(.)) %>%
+        do.call(rbind, .)
+
+    modules::import_package('ggplot2', attach = TRUE)
+
+    p = ggplot(lengths) +
+        aes(Length, color = Library) +
+        geom_density()
+
+    ggsave(output, p)
+})
+
+# vim: ft=r

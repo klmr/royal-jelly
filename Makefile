@@ -158,14 +158,18 @@ data/qc/multiqc_report.html: ${fastqc-files}
 	multiqc --force --outdir data/qc data/qc
 
 .PHONY: read-lengths
-## Compute length distributions
-read-lengths: ${read-lengths}
+## Compute length distributions and plot their density
+read-lengths: data/qc/read-lengths/read-length-density.pdf
 
 ${read-lengths}: ${trimmed-libraries}
 
 data/qc/read-lengths/%.txt: data/trimmed/%.fastq.gz bin/line-lengths
 	@$(mkdir)
 	${bsub} "gunzip -c '$<' | sed -n 2~4p | bin/line-lengths > '$@'"
+
+data/qc/read-lengths/read-length-density.pdf: ${read-lengths}
+	${bsub} -M4000 -R'select[mem>4000] rusage[mem=4000]' \
+		"./scripts/plot-read-length-distribution '$@' $+"
 #
 # Remove viral contamination
 #
