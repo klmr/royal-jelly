@@ -122,8 +122,10 @@ trim-long: ${long-trimmed-libraries}
 
 data/trimmed/long/%R1_001.fastq.gz: data/merged/%R1_001.fastq.gz data/merged/%R2_001.fastq.gz
 	@$(mkdir)
-	${bsub} "cutadapt -a AGATCGGAAGAGC -A AGATCGGAAGAGC \
-		-o '$@' -p '$(subst _R1_,_R2_,$@)' '$(firstword $+)' '$(lastword $+)'"
+	${bsub} "cutadapt -a AGATCGGAAGAGC -A AGATCGGAAGAGC
+		--minimum-length 10 \
+		-o '$@' -p '$(subst _R1_,_R2_,$@)' '$(firstword $+)' '$(lastword $+)' \
+		> '${@:.fastq.gz=.log}'"
 
 data/trimmed/long/%R2_001.fastq.gz: data/merged/%R1_001.fastq.gz data/merged/%R2_001.fastq.gz
 	# $@ already created by the preceding rule.
@@ -134,8 +136,10 @@ trim-short: ${short-trimmed-libraries}
 
 data/trimmed/short/%R1_001.fastq.gz: data/merged/%R1_001.fastq.gz data/merged/%R2_001.fastq.gz
 	@$(mkdir)
-	${bsub} "cutadapt --cut 4 -a NNNNTGGAATTCTCGGGTGCCAAGG -A NNNNGATCGTCGGACTGTAGAACTCTGAAC \
-		-o '$@' -p '$(subst _R1_,_R2_,$@)' '$(firstword $+)' '$(lastword $+)'"
+	${bsub} "cutadapt -a NNNNTGGAATTCTCGGGTGCCAAGG -A NNNNGATCGTCGGACTGTAGAACTCTGAAC \
+		--minimum-length 10 \
+		-o '$@' -p '$(subst _R1_,_R2_,$@)' '$(firstword $+)' '$(lastword $+)' \
+		> '${@:.fastq.gz=.log}'"
 
 data/trimmed/short/%R2_001.fastq.gz: data/merged/%R1_001.fastq.gz data/merged/%R2_001.fastq.gz
 	# $@ already created by the preceding rule.
@@ -155,7 +159,7 @@ data/qc/%_fastqc.zip: data/trimmed/%.fastq.gz
 qc-report: data/qc/multiqc_report.html
 
 data/qc/multiqc_report.html: ${fastqc-files}
-	multiqc --force --outdir data/qc data/qc
+	multiqc --force --outdir data/qc data/qc data/trimmed
 
 .PHONY: read-lengths
 ## Compute length distributions and plot their density
