@@ -165,7 +165,7 @@ ${read-lengths}: ${trimmed-libraries}
 
 data/qc/read-lengths/%.txt: data/trimmed/%.fastq.gz bin/line-lengths
 	@$(mkdir)
-	${bsub} "gunzip -c '$<' | bin/line-lengths > '$@'"
+	${bsub} "gunzip -c '$<' | sed -n 2~4p | bin/line-lengths > '$@'"
 #
 # Remove viral contamination
 #
