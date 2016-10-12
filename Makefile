@@ -23,8 +23,11 @@ index-dir := ../shared/index
 apis-reference = ${sequences}/apis_mellifera/Apis_mellifera.GCA_000002195.1.dna.toplevel.fa
 homo-reference = ${sequences}/homo_sapiens/Homo_sapiens.GRCh38.dna.primary_assembly.fa
 viral-reference = ${sequences}/bee-viruses/bee_viruses.fasta
+apis-index = ${index-dir}/$(notdir $(basename ${apis-reference}))/Genome
+homo-index = ${index-dir}/$(notdir $(basename ${homo-reference}))/Genome
 viral-index = ${index-dir}/bee-viruses/Genome
-index = ${index-dir}/bee-contamination/Genome
+apis-viral-index = ${index-dir}/$(notdir $(abspath ${apis-index}/..))-viruses/Genome
+
 viral-references = $(foreach i,$(shell cut -d, -f5 supporting/bee-virus-list.csv),${sequences}/bee-viruses/$i.fasta)
 raw-reads = $(shell ls raw/*.fastq.gz)
 merged-files = $(addprefix data/merged/,$(notdir $(subst L001,merged,$(call keep,L001,${raw-reads}))))
@@ -70,17 +73,30 @@ ${homo-reference}:
 # Build mapping indices
 #
 
+define build-index
+@$(mkdir)
+${bsub} -M${MEM} -R'select[mem>${MEM}] rusage[mem=${MEM}]' \
+	"STAR --runMode genomeGenerate --genomeDir '$(dir $@)' \
+	--genomeFastaFiles $+"
+	rm -r _STARtmp Log.out
+endef
+
+${apis-index}: ${apis-reference}
+	$(eval MEM=128000)
+	$(build-index)
+
+${homo-index}: ${homo-reference}
+	$(eval MEM=32000)
+	$(build-index)
+
+${apis-viral-index}: ${apis-reference} ${viral-reference}
+	$(eval MEM=128000)
+	$(build-index)
+
 ${viral-index}: ${viral-reference}
 	@$(mkdir)
 	STAR --runMode genomeGenerate --genomeSAindexNbases 3 \
 		--genomeDir '$(dir $@)' --genomeFastaFiles '$+'
-	rm Log.out
-
-${index}: ${apis-reference} ${viral-reference} ${homo-reference}
-	@$(mkdir)
-	${bsub} -M32000 -R'select[mem>32000] rusage[mem=32000]' \
-		"STAR --runMode genomeGenerate --genomeDir '$(dir $@)' \
-		--genomeFastaFiles $+"
 	rm Log.out
 
 #
