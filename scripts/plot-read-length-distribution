@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 
 sys = modules::import('klmr/sys')
-modules::import('klmr/functional')
+modules::import('klmr/functional', attach = TRUE)
 modules::import('klmr/functional/lambda')
 
 sys$run({
@@ -10,7 +10,8 @@ sys$run({
     libraries = tools::file_path_sans_ext(basename(filenames))
     names(filenames) = libraries
 
-    lengths = lapply(filenames, as.numeric %.% readLines) %>%
+    lengths = lapply(filenames,
+                     p(sample, 100000) %.% as.numeric %.% readLines) %>%
         Map(value ~ name -> data.frame(Length = value, Library = name),
             ., names(.)) %>%
         do.call(rbind, .)
