@@ -96,7 +96,7 @@ data/merged/%.fastq.gz: $$(call lane-files,$$@)
 	${bsub} "./scripts/merge-lanes $+ '$@'"
 
 #
-# Preliminary QC report on the unmapped input files
+# Trimming
 #
 
 .PHONY: trim-long
@@ -122,6 +122,10 @@ data/trimmed/short/%R1_001.fastq.gz: data/merged/%R1_001.fastq.gz data/merged/%R
 
 data/trimmed/short/%R2_001.fastq.gz: data/merged/%R1_001.fastq.gz data/merged/%R2_001.fastq.gz
 	# $@ already created by the preceding rule.
+
+#
+# Preliminary QC report on the unmapped input files
+#
 
 data/qc/%_fastqc.zip: data/trimmed/%.fastq.gz
 	@$(mkdir)
