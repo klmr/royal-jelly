@@ -194,6 +194,24 @@ data/viral-mapped/%.bam: $$(call read-files,$$@) ${viral-index}
 # Map against the human genome *a lot* more stringently because of conservation.
 # Remove anything that maps from database, map the rest against apis.
 
+#
+# Read mapping
+#
+
+.PHONY: map-reads
+## Map reads to reference
+map-reads: ${mapped-reads}
+
+data/mapped/%.bam: $$(call read-files,$$@) ${apis-viral-index}
+	@$(mkdir)
+	${bsub} -n 12 -M24000 -R'select[mem>24000] rusage[mem=24000]' \
+		"STAR --runThreadN 12 --genomeDir '$(dir $(lastword $^))' \
+		--runMode alignReads --alignEndsType Local \
+		--outFilterMismatchNoverLmax 0.15 --outFilterMultimapNmax 10 \
+		--readFilesIn $(call read-files,$@) --readFilesCommand 'gunzip -c' \
+		--outSAMtype BAM Unsorted --outFileNamePrefix '$(basename $@)'"
+	mv "$(basename $@)Alignment.out.bam" "$(basename $@).bam"
+
 .DEFAULT_GOAL := show-help
 # See <https://gist.github.com/klmr/575726c7e05d8780505a> for explanation.
 .PHONY: show-help
