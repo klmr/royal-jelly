@@ -210,7 +210,7 @@ data/mapped/%.bam: $$(call read-files,$$@) ${apis-viral-index}
 		--outFilterMismatchNoverLmax 0.15 --outFilterMultimapNmax 10 \
 		--readFilesIn $(call read-files,$@) --readFilesCommand 'gunzip -c' \
 		--outSAMtype BAM Unsorted --outFileNamePrefix '$(basename $@)'"
-	mv "$(basename $@)Alignment.out.bam" "$(basename $@).bam"
+	mv "$(basename $@)Aligned.out.bam" "$(basename $@).bam"
 
 .DEFAULT_GOAL := show-help
 # See <https://gist.github.com/klmr/575726c7e05d8780505a> for explanation.
