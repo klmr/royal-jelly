@@ -49,7 +49,7 @@ homo-mapped-reads = $(subst /mapped/,/human-mapped/,${mapped-reads})
 .PRECIOUS: ${homo-mapped-reads}
 
 #
-# Download and/or build the various reference genomes
+# Download and/or build the various reference genomes and annotations
 #
 
 ${apis-reference}:
@@ -66,7 +66,7 @@ ${sequence-dir}/bee-viruses/%.fasta:
 viral-reference: ${viral-reference}
 	
 ${viral-reference}: ${viral-references}
-	cat ${sequence-dir}/bee-viruses/*.fasta > '$@'
+	cat $+ > '$@'
 
 ${homo-reference}:
 	@$(mkdir)
