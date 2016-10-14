@@ -44,6 +44,9 @@ read-lengths = $(subst .fastq.gz,.txt,$(subst /trimmed/,/qc/read-lengths/,${trim
 mapped-reads = $(subst .fastq.gz,.bam,$(subst _R1_,_,$(call keep,_R1_,$(subst /trimmed/,/mapped/,${trimmed-libraries}))))
 .PRECIOUS: ${mapped-reads}
 
+homo-mapped-reads = $(subst /mapped/,/human-mapped/,${mapped-reads})
+.PRECIOUS: ${homo-mapped-reads}
+
 #
 # Download and/or build the various reference genomes
 #
@@ -145,20 +148,22 @@ data/trimmed/short/%R2_001.fastq.gz: data/merged/%R1_001.fastq.gz data/merged/%R
 	# $@ already created by the preceding rule.
 
 #
-# Remove viral contamination
+# Map potential human contamination
 #
 
-read-files = $(foreach i,xyz,raw/$(notdir ${1:.bam=$i.fastq.gz}))
+.PHONY: map-to-human
+## Map reads to human reference
+map-to-human: ${homo-mapped-reads}
 
-data/viral-mapped/%.bam: $$(call read-files,$$@) ${viral-index}
+data/human-mapped/%.bam: $$(call read-files,$$@) ${homo-index}
 	@$(mkdir)
 	${bsub} -n 12 -M24000 -R'select[mem>24000] rusage[mem=24000]' \
 		"STAR --runThreadN 12 --genomeDir '$(dir $(lastword $^))' \
 		--runMode alignReads --alignEndsType Local \
 		--outFilterMismatchNoverLmax 0.15 --outFilterMultimapNmax 1000 \
-		--readFilesIn $(call read-files,%) --readFilesCommand 'gunzip -c' \
+		--readFilesIn $(call read-files,$@) --readFilesCommand 'gunzip -c' \
 		--outSAMtype BAM Unsorted --outFileNamePrefix '$(basename $@)'"
-	mv "$(basename $@)Alignment.out.bam" "$(basename $@).bam"
+	mv "$(basename $@)Aligned.out.bam" "$(basename $@).bam"
 
 # FIXME: Align reads against viral/human contaminants with soft-clipping and 85% identity for match, allowing multi-mapping reads.
 # Map against the human genome *a lot* more stringently because of conservation.
