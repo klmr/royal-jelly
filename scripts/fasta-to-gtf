@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+
+usage() {
+    echo >&2 "Usage: $0 -o <output> <input...>"
+    exit ${1-0}
+}
+
+while getopts "o:h" arg; do
+    case "$arg" in
+        o)
+            outfile="$OPTARG"
+            ;;
+        h)
+            usage
+            ;;
+        *)
+            usage 1
+            ;;
+    esac
+done
+
+shift $((OPTIND - 1))
+infile=($@)
+
+if [ -z "$outfile" ]; then
+    echo >&2 'Error: No output file provided.'
+    echo >&2
+    usage 1
+fi
+
+echo >&2 "output: $outfile"
+echo >&2 "input:  ${infile[@]}"
+
+for fasta in "${infile[@]}"; do
+    echo >&2 -n "Scanning file $fasta"
+    IFS=$'\n' ids=($(grep '^>' "$fasta"))
+    echo >&2 ", found ${#ids[@]} sequence(s)"
+
+    for id in "${ids[@]}"; do
+        name="$(sed 's/^>//' <<< "$id")"
+        chr="$(cut -d' ' -f1 <<< "$name")"
+        name="$(cut -d' ' -f2- <<< "$name")"
+        # FIXME: Surely this can be condensed into a single sed expression.
+        length=$(sed "0,/^$id/d" < "$fasta" | sed '/^>/q' | sed '/^>/d' | tr -d '\n' | wc -c)
+
+        printf "$chr\tGenBank\tgene\t1\t$length\t.\t+\t.\tgene_id "'"'"$chr"'"'" gene_name "'"'"$name"'"\n'
+    done
+done \
+> "$outfile"
