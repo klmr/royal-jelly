@@ -158,8 +158,8 @@ data/qc/%_fastqc.zip: data/trimmed/%.fastq.gz
 ## Quality control report
 qc-report: data/qc/multiqc_report.html
 
-data/qc/multiqc_report.html: ${fastqc-files}
-	multiqc --force --outdir data/qc data/qc data/trimmed
+data/qc/multiqc_report.html: ${fastqc-files} ${trimmed-libraries} ${mapped-reads}
+	multiqc --force --outdir data/qc data/qc data/trimmed data/mapped
 
 .PHONY: read-lengths
 ## Compute length distributions and plot their density
