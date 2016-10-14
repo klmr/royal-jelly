@@ -24,6 +24,11 @@ annotation-dir = ../shared/annotation
 apis-reference = ${sequence-dir}/apis_mellifera/Apis_mellifera.GCA_000002195.1.dna.toplevel.fa
 homo-reference = ${sequence-dir}/homo_sapiens/Homo_sapiens.GRCh38.dna.primary_assembly.fa
 viral-reference = ${sequence-dir}/bee-viruses/bee_viruses.fasta
+
+apis-annotation = ${annotation-dir}/apis_mellifera/Apis_mellifera.GCA_000002195.1.32.gtf
+viral-annotation = ${annotation-dir}/bee-viruses/bee_viruses.gtf
+apis-viral-annotation = ${annotation-dir}/$(notdir $(abspath ${apis-annotation}/..))-viruses/$(notdir ${apis-annotation:%.gtf=%-viruses.gtf})
+
 apis-index = ${index-dir}/$(notdir $(basename ${apis-reference}))/Genome
 homo-index = ${index-dir}/$(notdir $(basename ${homo-reference}))/Genome
 viral-index = ${index-dir}/bee-viruses/Genome
