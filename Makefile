@@ -145,36 +145,6 @@ data/trimmed/short/%R2_001.fastq.gz: data/merged/%R1_001.fastq.gz data/merged/%R
 	# $@ already created by the preceding rule.
 
 #
-# Preliminary QC report on the unmapped input files
-#
-
-data/qc/%_fastqc.zip: data/trimmed/%.fastq.gz
-	@$(mkdir)
-	${bsub} -M4000 -R'select[mem>4000] rusage[mem=4000]' \
-		"fastqc --outdir '$(dir $@)' '$<'"
-	rm '${@:.zip=.html}'
-
-.PHONY: qc-report
-## Quality control report
-qc-report: data/qc/multiqc_report.html
-
-data/qc/multiqc_report.html: ${fastqc-files} ${trimmed-libraries} ${mapped-reads}
-	multiqc --force --outdir data/qc data/qc data/trimmed data/mapped
-
-.PHONY: read-lengths
-## Compute length distributions and plot their density
-read-lengths: data/qc/read-lengths/read-length-density.pdf
-
-${read-lengths}: ${trimmed-libraries}
-
-data/qc/read-lengths/%.txt: data/trimmed/%.fastq.gz bin/line-lengths
-	@$(mkdir)
-	${bsub} "gunzip -c '$<' | sed -n 2~4p | bin/line-lengths > '$@'"
-
-data/qc/read-lengths/read-length-density.pdf: ${read-lengths}
-	${bsub} -M4000 -R'select[mem>4000] rusage[mem=4000]' \
-		"./scripts/plot-read-length-distribution '$@' $+"
-#
 # Remove viral contamination
 #
 
@@ -211,6 +181,37 @@ data/mapped/%.bam: $$(call read-files,$$@) ${apis-viral-index}
 		--readFilesIn $(call read-files,$@) --readFilesCommand 'gunzip -c' \
 		--outSAMtype BAM Unsorted --outFileNamePrefix '$(basename $@)'"
 	mv "$(basename $@)Aligned.out.bam" "$(basename $@).bam"
+
+#
+# QC report
+#
+
+data/qc/%_fastqc.zip: data/trimmed/%.fastq.gz
+	@$(mkdir)
+	${bsub} -M4000 -R'select[mem>4000] rusage[mem=4000]' \
+		"fastqc --outdir '$(dir $@)' '$<'"
+	rm '${@:.zip=.html}'
+
+.PHONY: qc-report
+## Quality control report
+qc-report: data/qc/multiqc_report.html
+
+data/qc/multiqc_report.html: ${fastqc-files} ${trimmed-libraries} ${mapped-reads}
+	multiqc --force --outdir data/qc data/qc data/trimmed data/mapped
+
+.PHONY: read-lengths
+## Compute length distributions and plot their density
+read-lengths: data/qc/read-lengths/read-length-density.pdf
+
+${read-lengths}: ${trimmed-libraries}
+
+data/qc/read-lengths/%.txt: data/trimmed/%.fastq.gz bin/line-lengths
+	@$(mkdir)
+	${bsub} "gunzip -c '$<' | sed -n 2~4p | bin/line-lengths > '$@'"
+
+data/qc/read-lengths/read-length-density.pdf: ${read-lengths}
+	${bsub} -M4000 -R'select[mem>4000] rusage[mem=4000]' \
+		"./scripts/plot-read-length-distribution '$@' $+"
 
 .DEFAULT_GOAL := show-help
 # See <https://gist.github.com/klmr/575726c7e05d8780505a> for explanation.
