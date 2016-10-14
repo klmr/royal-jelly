@@ -18,17 +18,18 @@ include binaries.make
 # Helper variables
 #
 
-sequences := ../shared/reference
+sequence-dir := ../shared/reference
 index-dir := ../shared/index
-apis-reference = ${sequences}/apis_mellifera/Apis_mellifera.GCA_000002195.1.dna.toplevel.fa
-homo-reference = ${sequences}/homo_sapiens/Homo_sapiens.GRCh38.dna.primary_assembly.fa
-viral-reference = ${sequences}/bee-viruses/bee_viruses.fasta
+annotation-dir = ../shared/annotation
+apis-reference = ${sequence-dir}/apis_mellifera/Apis_mellifera.GCA_000002195.1.dna.toplevel.fa
+homo-reference = ${sequence-dir}/homo_sapiens/Homo_sapiens.GRCh38.dna.primary_assembly.fa
+viral-reference = ${sequence-dir}/bee-viruses/bee_viruses.fasta
 apis-index = ${index-dir}/$(notdir $(basename ${apis-reference}))/Genome
 homo-index = ${index-dir}/$(notdir $(basename ${homo-reference}))/Genome
 viral-index = ${index-dir}/bee-viruses/Genome
 apis-viral-index = ${index-dir}/$(notdir $(abspath ${apis-index}/..))-viruses/Genome
 
-viral-references = $(foreach i,$(shell cut -d, -f5 supporting/bee-virus-list.csv),${sequences}/bee-viruses/$i.fasta)
+viral-references = $(foreach i,$(shell cut -d, -f5 supporting/bee-virus-list.csv),${sequence-dir}/bee-viruses/$i.fasta)
 raw-reads = $(shell ls raw/*.fastq.gz)
 merged-files = $(addprefix data/merged/,$(notdir $(subst L001,merged,$(call keep,L001,${raw-reads}))))
 .PRECIOUS: ${merged-files}
@@ -56,7 +57,7 @@ ${apis-reference}:
 	wget ftp://ftp.ensemblgenomes.org/pub/release-32/metazoa/fasta/apis_mellifera/dna/$(notdir $@).gz -O '$@.gz'
 	gunzip $@
 
-${sequences}/bee-viruses/%.fasta:
+${sequence-dir}/bee-viruses/%.fasta:
 	@$(mkdir)
 	./scripts/efetch-fasta '$*' '$@'
 
@@ -65,7 +66,7 @@ ${sequences}/bee-viruses/%.fasta:
 viral-reference: ${viral-reference}
 	
 ${viral-reference}: ${viral-references}
-	cat ${sequences}/bee-viruses/*.fasta > '$@'
+	cat ${sequence-dir}/bee-viruses/*.fasta > '$@'
 
 ${homo-reference}:
 	@$(mkdir)
