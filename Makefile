@@ -78,6 +78,23 @@ ${homo-reference}:
 	wget ftp://ftp.ensembl.org/pub/release-85/fasta/homo_sapiens/dna/$(notdir $@).gz -O '$@.gz'
 	gunzip $@
 
+${apis-annotation}:
+	@$(mkdir)
+	wget ftp://ftp.ensemblgenomes.org/pub/release-32/metazoa/gtf/apis_mellifera/$(notdir $@).gz -O '$@.gz'
+	gunzip $@
+
+${viral-annotation}: ${viral-references}
+	@$(mkdir)
+	./scripts/fasta-to-gtf -o $@ $+
+
+.PHONY: annotation
+## Merge the bee and bee virus annotation file
+annotation: ${apis-viral-annotation}
+
+${apis-viral-annotation}: ${apis-annotation} ${viral-annotation}
+	@$(mkdir)
+	cat $+ > '$@'
+
 #
 # Build mapping indices
 #
