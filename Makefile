@@ -174,7 +174,7 @@ data/human-mapped/%.bam: $$(call read-files,$$@) ${homo-index}
 #
 
 .PHONY: map-reads
-## Map reads to reference
+## Map reads to reference of bee genome and viral genomes
 map-reads: ${mapped-reads}
 
 data/mapped/%.bam: $$(call read-files,$$@) ${apis-viral-index}
