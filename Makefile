@@ -241,6 +241,14 @@ data/qc/read-lengths/read-length-density.pdf: ${read-lengths}
 	${bsub} -M4000 -R'select[mem>4000] rusage[mem=4000]' \
 		"./scripts/plot-read-length-distribution '$@' $+"
 
+#
+# Feature counts
+#
+
+data/quant/%.tsv: data/mapped/%.bam ${apis-viral-annotation}
+	@$(mkdir)
+	${bsub} "featureCounts -t exon -g gene_id -M -a '$(lastword $+)' -o '$@' '$<'"
+
 .DEFAULT_GOAL := show-help
 # See <https://gist.github.com/klmr/575726c7e05d8780505a> for explanation.
 .PHONY: show-help
