@@ -10,7 +10,7 @@ keep = $(foreach i,$2,$(if $(findstring $1,$i),$i))
 
 raw-library-files = $(shell echo $(addsuffix *_L001_*,$(addprefix raw/,$(shell grep $1 raw/samples.csv | cut -d, -f2 | tr _ -))))
 library-files = $(subst _L001_,_merged_,$(addprefix $2,$(notdir $(call raw-library-files,$1))))
-read-files = $(foreach i,R1 R2,$(subst /mapped/,/trimmed/,$(subst _001,_${i}_001,${1:.bam=.fastq.gz})))
+read-files = $(foreach i,R1 R2,$(shell sed 's,data/[^/]*/,data/trimmed/,' <<< '$(subst _001,_${i}_001,${1:.bam=.fastq.gz})'))
 
 include binaries.make
 
