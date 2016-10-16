@@ -53,6 +53,9 @@ mapped-reads = $(subst .fastq.gz,.bam,$(subst _R1_,_,$(call keep,_R1_,$(subst /t
 homo-mapped-reads = $(subst /mapped/,/human-mapped/,${mapped-reads})
 .PRECIOUS: ${homo-mapped-reads}
 
+feature-counts = $(patsubst %.bam,%.tsv,$(subst /mapped/,/quant/,${mapped-reads}))
+.PRECIOUS: ${feature-counts}
+
 #
 # Download and/or build the various reference genomes and annotations
 #
@@ -244,6 +247,10 @@ data/qc/read-lengths/read-length-density.pdf: ${read-lengths}
 #
 # Feature counts
 #
+
+.PHONY: feature-counts
+## Count read coverage of genes in bee and viruses
+feature-counts: ${feature-counts}
 
 data/quant/%.tsv: data/mapped/%.bam ${apis-viral-annotation}
 	@$(mkdir)
