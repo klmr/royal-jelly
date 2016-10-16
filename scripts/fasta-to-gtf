@@ -43,7 +43,8 @@ for fasta in "${infile[@]}"; do
         # FIXME: Surely this can be condensed into a single sed expression.
         length=$(sed "0,/^$id/d" < "$fasta" | sed '/^>/q' | sed '/^>/d' | tr -d '\n' | wc -c)
 
-        printf "$chr\tGenBank\tgene\t1\t$length\t.\t+\t.\tgene_id "'"'"$chr"'"'" gene_name "'"'"$name"'"\n'
+        printf "$chr\tGenBank\tgene\t1\t$length\t.\t+\t.\tgene_id "'"'"$chr"'"'"; gene_name "'"'"$name"'"; gene_biotype "protein_coding"\n'
+        printf "$chr\tGenBank\texon\t1\t$length\t.\t+\t.\tgene_id "'"'"$chr"'"'"; gene_name "'"'"$name"'"; gene_biotype "protein_coding"; exon_number "1"\n'
     done
 done \
 > "$outfile"
