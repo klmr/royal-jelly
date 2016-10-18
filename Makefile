@@ -254,7 +254,7 @@ feature-counts: ${feature-counts}
 
 data/quant/%.tsv: data/mapped/%.bam ${apis-viral-annotation}
 	@$(mkdir)
-	${bsub} "featureCounts -t exon -g gene_id -M -a '$(lastword $+)' -o '$@' '$<'"
+	${bsub} "featureCounts -p -t gene -g gene_id -M -O -a '$(lastword $+)' -o '$@' '$<'"
 
 .DEFAULT_GOAL := show-help
 # See <https://gist.github.com/klmr/575726c7e05d8780505a> for explanation.
