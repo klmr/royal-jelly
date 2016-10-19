@@ -120,7 +120,7 @@ ${apis-index}: ${apis-reference}
 	$(build-index)
 
 ${homo-index}: ${homo-reference}
-	$(eval MEM=32000)
+	$(eval MEM=48000)
 	$(build-index)
 
 ${apis-viral-index}: ${apis-reference} ${viral-reference}
