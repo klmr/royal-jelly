@@ -56,6 +56,9 @@ mapped-sorted-reads = ${mapped-reads:.bam=.sorted.bam}
 mapped-indexed-reads = ${mapped-sorted-reads:.bam=.bam.bai}
 .PRECIOUS: ${mapped-indexed-reads}
 
+read-coverage = $(patsubst %.bam,%.genomecov,$(subst /mapped/,/coverage/,${mapped-reads}))
+.PRECIOUS: ${read-coverage}
+
 homo-mapped-reads = $(subst /mapped/,/human-mapped/,${mapped-reads})
 .PRECIOUS: ${homo-mapped-reads}
 
@@ -259,6 +262,15 @@ data/mapped/%.sorted.bam: data/mapped/%.bam
 
 data/mapped/%.bam.bai: data/mapped/%.bam
 	${bsub} "samtools index '$<'"
+
+.PHONY: read-coverage
+## Compute per-base read coverage over the bee/viral genomes
+read-coverage: ${read-coverage}
+
+data/coverage/%.genomecov: data/mapped/%.sorted.bam
+	@$(mkdir)
+	${bsub} -M2000 -R'select[mem>2000] rusage[mem=2000]' \
+		"bedtools genomecov -d -ibam '$<' > '$@'"
 
 #
 # Feature counts
