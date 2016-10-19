@@ -50,6 +50,12 @@ read-lengths = $(subst .fastq.gz,.txt,$(subst /trimmed/,/qc/read-lengths/,${trim
 mapped-reads = $(subst .fastq.gz,.bam,$(subst _R1_,_,$(call keep,_R1_,$(subst /trimmed/,/mapped/,${trimmed-libraries}))))
 .PRECIOUS: ${mapped-reads}
 
+mapped-sorted-reads = ${mapped-reads:.bam=.sorted.bam}
+.PRECIOUS: ${mapped-sorted-reads}
+
+mapped-indexed-reads = ${mapped-sorted-reads:.bam=.bam.bai}
+.PRECIOUS: ${mapped-indexed-reads}
+
 homo-mapped-reads = $(subst /mapped/,/human-mapped/,${mapped-reads})
 .PRECIOUS: ${homo-mapped-reads}
 
@@ -242,6 +248,17 @@ data/qc/read-lengths/%.txt: data/trimmed/%.fastq.gz bin/line-lengths
 data/qc/read-lengths/read-length-density.pdf: ${read-lengths}
 	${bsub} -M4000 -R'select[mem>4000] rusage[mem=4000]' \
 		"./scripts/plot-read-length-distribution '$@' $+"
+
+#
+# Visualise mapping
+#
+
+data/mapped/%.sorted.bam: data/mapped/%.bam
+	${bsub} -M8000 -R'select[mem>8000] rusage[mem=8000]' \
+		"samtools sort -m8G -o '$@' '$<'"
+
+data/mapped/%.bam.bai: data/mapped/%.bam
+	${bsub} "samtools index '$<'"
 
 #
 # Feature counts
