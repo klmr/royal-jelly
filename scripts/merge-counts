@@ -1,0 +1,23 @@
+#!/usr/bin/env Rscript
+
+sys = modules::import('klmr/sys')
+
+sys$run({
+    stopifnot(identical(sys$args[1], '-o'))
+    outfile = sys$args[2]
+    infiles = sys$args[-c(1, 2)]
+
+    io = modules::import('ebi-predocs/ebits/io')
+    modules::import('klmr/functional')
+    modules::import('klmr/functional/lambda')
+
+    data = lapply(infiles, io$read_table, sep = '\t', header = TRUE,
+                  comment.char = '#', check.names = FALSE) %>%
+        lapply(dplyr::select_, 1L, 7L) %>%
+        Reduce(a ~ b -> dplyr::inner_join(a, b, by = 'Geneid'), .) %>%
+        `colnames<-`(c('Gene', sub('_merged_.*$', '', basename(infiles))))
+
+    io$write_table(data, outfile)
+})
+
+# vim: ft=r
