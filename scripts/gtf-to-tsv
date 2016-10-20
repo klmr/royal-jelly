@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+infile="$1"
+outfile="$2"
+
+# This is exactly the kind of brittle conversion scripts that give
+# bioinformatics such a bad name …
+
+< "$infile" \
+awk -F '	' '!/^#/ && $3 == "gene" { print $9 }' \
+| sed -e 's/gene_id "\([^"]*\)"/\1/' \
+    -e 's/gene_biotype "\([^"]*\)"/\1/' \
+    -e 's/[[:alpha:]_]* "[^"]*"//g' \
+    -e 's/[ ;][ ;]*/	/g' \
+    -e 's/[[:space:]]$//' \
+> "$outfile"
