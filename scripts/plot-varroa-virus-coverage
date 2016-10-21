@@ -14,8 +14,8 @@ nice_ceiling = function (n, accuracy)
     ceiling(n / accuracy) * accuracy
 
 ggplot(data) +
-    aes(V2, V3) +
-    geom_polygon() +
+    aes(V2, ymin = 0, ymax = V3) +
+    geom_ribbon() +
     labs(x = 'Position (bp)', y = 'Coverage') +
     scale_x_continuous(breaks = round(tile_range(range(data$V2), 10)),
                        limits = c(1, nice_ceiling(max(data$V2), 100)),
