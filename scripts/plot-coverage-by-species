@@ -1,0 +1,109 @@
+#!/usr/bin/env Rscript
+
+args = list(coverage = 'data/quant/royal-jelly-counts.tsv',
+            design = 'raw/samples.csv',
+            viruses = 'supporting/bee-virus-list.csv')
+
+sys = modules::import('klmr/sys')
+
+sys$run({
+    io = modules::import('ebi-predocs/ebits/io')
+
+    modules::import_package('dplyr', attach = TRUE)
+    tidyr = modules::import_package('tidyr')
+
+    design = io$read_table(args$design, header = TRUE) %>%
+        filter(Lane == 1) %>%
+        select(Sample_ID, Description)
+
+    viruses = io$read_table(args$viruses) %>%
+        select(Species = 1, ID = 5)
+
+    annotation = io$read_table('data/apis-viruses.annotation.tsv') %>%
+        select(Gene = 1, Biotype = 2) %>%
+        mutate(Gene = sub('^gi\\|[^|]+\\|(ref|gb)\\|([^|]+)\\|$', '\\2', Gene),
+               Biotype = gsub('_', '\u00AD', Biotype))
+
+    coverage = io$read_table(args$coverage, header = TRUE) %>%
+        tidyr$gather(Library, Count, -Gene) %>%
+        mutate(Library = sub('_.*', '', Library) %>% gsub('-', '_', .)) %>%
+        inner_join(design, by = c('Library' = 'Sample_ID')) %>%
+        mutate(Gene = sub('^gi\\|[^|]+\\|(ref|gb)\\|([^|]+)\\|$', '\\2', Gene)) %>%
+        left_join(viruses, by = c('Gene' = 'ID')) %>%
+        mutate(Species = ifelse(is.na(Species), 'Apis mellifera', Species)) %>%
+        mutate(Species = relevel(factor(Species), 'Apis mellifera')) %>%
+        left_join(annotation, by = 'Gene') %>%
+        mutate(Which = ifelse(grepl('^MJ3', Library), 'MRJP3', 'Royal jelly'))
+
+    species_coverage = coverage %>%
+        group_by(Library, Description, Which, Species) %>%
+        summarize(Count = sum(Count)) %>%
+        mutate(Fraction = Count / sum(Count)) %>%
+        ungroup()
+
+    biotype_coverage = coverage %>%
+        filter(Species == 'Apis mellifera') %>%
+        group_by(Library, Description, Species, Which, Biotype) %>%
+        summarize(Count = sum(Count)) %>%
+        mutate(Fraction = Count / sum(Count)) %>%
+        ungroup()
+
+    modules::import_package('ggplot2', attach = TRUE)
+    theme_set(theme_minimal())
+
+    # Only plot libraries which contribute at least 1% of the coverage.
+    species_coverage %>%
+        filter(Description == 'long') %>%
+        filter(Fraction >= 0.01) %>%
+        ggplot() +
+        aes(Species, Count, color = Species == 'Apis mellifera') +
+        geom_boxplot(lwd = 1) +
+        facet_wrap(~ Which) +
+        scale_color_manual(values = c('#404040', '#802020'), guide = FALSE) +
+        theme(axis.text.x = element_text(angle = -45, hjust = 0),
+              strip.text = element_text(size = 12))
+
+    ggsave('data/plots/per-species-coverage-long-boxplot.pdf')
+
+    species_coverage %>%
+        filter(Description == 'short') %>%
+        filter(Fraction >= 0.01) %>%
+        ggplot() +
+        aes(Species, Count, color = Species == 'Apis mellifera') +
+        geom_boxplot(lwd = 1) +
+        #geom_bar(stat = 'identity', width = 1) +
+        facet_wrap(~ Which) +
+        scale_color_manual(values = c('#404040', '#802020'), guide = FALSE) +
+        theme(axis.text.x = element_text(angle = -45, hjust = 0),
+              strip.text = element_text(size = 12))
+
+    ggsave('data/plots/per-species-coverage-short-boxplot.pdf')
+
+    biotype_coverage %>%
+        filter(Description == 'long') %>%
+        filter(Fraction >= 0.01) %>%
+        ggplot() +
+        aes(Biotype, Count) +
+        geom_boxplot(lwd = 1) +
+        scale_y_log10() +
+        facet_wrap(~ Which) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1),
+              strip.text = element_text(size = 12))
+
+    ggsave('data/plots/per-biotype-coverage-long-boxplot.pdf')
+
+    biotype_coverage %>%
+        filter(Description == 'short') %>%
+        filter(Fraction >= 0.01) %>%
+        ggplot() +
+        aes(Biotype, Count) +
+        geom_boxplot(lwd = 1) +
+        scale_y_log10() +
+        facet_wrap(~ Which) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1),
+              strip.text = element_text(size = 12))
+
+    ggsave('data/plots/per-biotype-coverage-short-boxplot.pdf')
+})
+
+# vim: ft=r
