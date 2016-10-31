@@ -6,7 +6,7 @@ output="$2"
 samtools view -f66 "$input" \
 | cut -f9 \
 | sed 's/^-//' \
-| sort \
+| sort -n \
 | uniq -c \
 | sed -e 's/^ *//' -e 's/ /\t/' \
 > "$output"
