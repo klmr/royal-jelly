@@ -65,6 +65,9 @@ homo-mapped-reads = $(subst /mapped/,/human-mapped/,${mapped-reads})
 feature-counts = $(patsubst %.bam,%.tsv,$(subst /mapped/,/quant/,${mapped-reads}))
 .PRECIOUS: ${feature-counts}
 
+insert-sizes = $(patsubst %.bam,%-insert-size.tsv,$(subst /mapped/,/isize/,${mapped-reads}))
+.PRECIOUS: ${insert-sizes}
+
 #
 # Download and/or build the various reference genomes and annotations
 #
@@ -239,6 +242,19 @@ qc-report: data/qc/multiqc_report.html
 
 data/qc/multiqc_report.html: ${fastqc-files} ${trimmed-libraries} ${mapped-reads} ${feature-counts}
 	multiqc --force --outdir data/qc $(sort $(dir $+))
+
+.PHONY: insert-sizes
+## Compute insert size distribution and plot their density
+insert-sizes: ${insert-sizes}
+
+data/isize/%-insert-size.tsv: data/mapped/%.bam
+	@$(mkdir)
+	${bsub} -M16000 -R'select[mem>16000] rusage[mem=16000]' \
+		"picard CollectInsertSizeMetrics \
+		INPUT='$<' \
+		OUTPUT='$@' \
+		HISTOGRAM_FILE='${@:.tsv=.pdf}' \
+		ASSUME_SORTED=false"
 
 .PHONY: read-lengths
 ## Compute length distributions and plot their density
