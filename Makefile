@@ -196,8 +196,9 @@ data/human-mapped/%.bam: $$(call read-files,$$@) ${homo-index}
 		--runMode alignReads --alignEndsType Local \
 		--outFilterMismatchNoverLmax 0.15 --outFilterMultimapNmax 1000 \
 		--readFilesIn $(call read-files,$@) --readFilesCommand 'gunzip -c' \
-		--outSAMtype BAM Unsorted --outFileNamePrefix '$(basename $@)'"
-	mv "$(basename $@)Aligned.out.bam" "$(basename $@).bam"
+		--outSAMtype BAM SortedByCoordinate --outSAMunmapped Within \
+		--outFileNamePrefix '$(basename $@)'"
+	mv "$(basename $@)Aligned.sortedByCoord.out.bam" "$(basename $@).bam"
 
 # FIXME: Align reads against viral/human contaminants with soft-clipping and 85% identity for match, allowing multi-mapping reads.
 # Map against the human genome *a lot* more stringently because of conservation.
@@ -218,8 +219,9 @@ data/mapped/%.bam: $$(call read-files,$$@) ${apis-viral-index}
 		--runMode alignReads --alignEndsType Local \
 		--outFilterMismatchNoverLmax 0.15 --outFilterMultimapNmax 10 \
 		--readFilesIn $(call read-files,$@) --readFilesCommand 'gunzip -c' \
-		--outSAMtype BAM Unsorted --outFileNamePrefix '$(basename $@)'"
-	mv "$(basename $@)Aligned.out.bam" "$(basename $@).bam"
+		--outSAMtype BAM SortedByCoordinate --outSAMunmapped Within \
+		--outFileNamePrefix '$(basename $@)'"
+	mv "$(basename $@)Aligned.sortedByCoord.out.bam" "$(basename $@).bam"
 
 #
 # QC report
