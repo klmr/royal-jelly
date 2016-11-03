@@ -58,6 +58,9 @@ mapped-indexed-reads = ${mapped-reads:.bam=.bam.bai}
 read-coverage = $(patsubst %.bam,%.genomecov,$(subst /mapped/,/coverage/,${mapped-reads}))
 .PRECIOUS: ${read-coverage}
 
+bigwig-files = $(patsubst %.bam,%.bw,$(subst /mapped/,/coverage/,${mapped-reads}))
+.PRECIOUS: ${bigwig-files}
+
 homo-mapped-reads = $(subst /mapped/,/human-mapped/,${mapped-reads})
 .PRECIOUS: ${homo-mapped-reads}
 
@@ -284,6 +287,10 @@ data/coverage/%.genomecov: data/mapped/%.bam
 	@$(mkdir)
 	${bsub} -M2000 -R'select[mem>2000] rusage[mem=2000]' \
 		"bedtools genomecov -d -ibam '$<' > '$@'"
+
+.PHONY: bigwig
+## Generate BigWig files of the bee/viral read coverage
+bigwig: ${bigwig-files}
 
 data/coverage/%.bedgraph: data/mapped/%.bam
 	@$(mkdir)
