@@ -233,6 +233,7 @@ data/mapped/short/%.bam: $$(call read-files,$$@) ${apis-viral-index}
 	${bsub} -n 12 $(call mem,24000) \
 		"STAR --runThreadN 12 --genomeDir '$(dir $(lastword $^))' \
 		--runMode alignReads --alignEndsType Local \
+		--outFilterMatchNmin 18 \
 		--outFilterMismatchNoverLmax 0.05 --outFilterMultimapNmax 10000 \
 		--readFilesIn $(call read-files,$@) --readFilesCommand 'gunzip -c' \
 		--outSAMtype BAM SortedByCoordinate --outSAMunmapped Within \
