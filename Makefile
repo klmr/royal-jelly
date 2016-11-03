@@ -70,6 +70,9 @@ feature-counts = $(patsubst %.bam,%.tsv,$(subst /mapped/,/quant/,${mapped-reads}
 insert-sizes = $(patsubst %.bam,%-insert-size.tsv,$(subst /mapped/,/isize/,${mapped-reads}))
 .PRECIOUS: ${insert-sizes}
 
+unmapped-reads = $(patsubst %.bam,%_R1.fasta,$(subst /mapped/,/unmapped/,${mapped-reads}))
+.PRECIOUS: ${unmapped-reads}
+
 #
 # Download and/or build the various reference genomes and annotations
 #
