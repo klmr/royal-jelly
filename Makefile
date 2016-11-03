@@ -118,7 +118,7 @@ ${apis-viral-annotation}: ${apis-annotation} ${viral-annotation}
 
 define build-index
 @$(mkdir)
-${bsub} -M${MEM} -R'select[mem>${MEM}] rusage[mem=${MEM}]' \
+${bsub} $(call mem,${MEM}) \
 	"STAR --runMode genomeGenerate --genomeDir '$(dir $@)' \
 	--genomeFastaFiles $+"; rm -rf _STARtmp Log.out
 endef
@@ -196,7 +196,7 @@ map-to-human: ${homo-mapped-reads}
 
 data/human-mapped/%.bam: $$(call read-files,$$@) ${homo-index}
 	@$(mkdir)
-	${bsub} -n 12 -M24000 -R'select[mem>24000] rusage[mem=24000]' \
+	${bsub} -n 12 $(call mem,24000) \
 		"STAR --runThreadN 12 --genomeDir '$(dir $(lastword $^))' \
 		--runMode alignReads --alignEndsType Local \
 		--outFilterMismatchNoverLmax 0.15 --outFilterMultimapNmax 1000 \
@@ -219,7 +219,7 @@ map-reads: ${mapped-reads}
 
 data/mapped/%.bam: $$(call read-files,$$@) ${apis-viral-index}
 	@$(mkdir)
-	${bsub} -n 12 -M24000 -R'select[mem>24000] rusage[mem=24000]' \
+	${bsub} -n 12 $(call mem,24000) \
 		"STAR --runThreadN 12 --genomeDir '$(dir $(lastword $^))' \
 		--runMode alignReads --alignEndsType Local \
 		--outFilterMismatchNoverLmax 0.15 --outFilterMultimapNmax 10 \
@@ -234,7 +234,7 @@ data/mapped/%.bam: $$(call read-files,$$@) ${apis-viral-index}
 
 data/qc/%_fastqc.zip: data/trimmed/%.fastq.gz
 	@$(mkdir)
-	${bsub} -M4000 -R'select[mem>4000] rusage[mem=4000]' \
+	${bsub} $(call mem,4000) \
 		"fastqc --outdir '$(dir $@)' '$<'"
 	rm '${@:.zip=.html}'
 
@@ -251,7 +251,7 @@ insert-sizes: ${insert-sizes}
 
 data/isize/%-insert-size.tsv: data/mapped/%.bam
 	@$(mkdir)
-	${bsub} -M16000 -R'select[mem>16000] rusage[mem=16000]' \
+	${bsub} $(call mem,16000) \
 		"picard CollectInsertSizeMetrics \
 		INPUT='$<' \
 		OUTPUT='$@' \
@@ -269,7 +269,7 @@ data/qc/read-lengths/%.txt: data/trimmed/%.fastq.gz bin/line-lengths
 	${bsub} "gunzip -c '$<' | sed -n 2~4p | bin/line-lengths > '$@'"
 
 data/qc/read-lengths/read-length-density.pdf: ${read-lengths}
-	${bsub} -M4000 -R'select[mem>4000] rusage[mem=4000]' \
+	${bsub} $(call mem,4000) \
 		"./scripts/plot-read-length-distribution '$@' $+"
 
 #
@@ -285,7 +285,7 @@ read-coverage: ${read-coverage}
 
 data/coverage/%.genomecov: data/mapped/%.bam
 	@$(mkdir)
-	${bsub} -M2000 -R'select[mem>2000] rusage[mem=2000]' \
+	${bsub} $(call mem,4000) \
 		"bedtools genomecov -d -ibam '$<' > '$@'"
 
 .PHONY: bigwig
@@ -310,7 +310,7 @@ feature-counts: ${feature-counts}
 
 data/quant/%.tsv: data/mapped/%.bam ${apis-viral-annotation}
 	@$(mkdir)
-	${bsub} -M1000 -R'select[mem>1000] rusage[mem=1000]' \
+	${bsub} $(call mem,1000) \
 		"featureCounts -p -t gene -g gene_id -M -O -a '$(lastword $+)' -o '$@' '$<'"
 
 data/quant/royal-jelly-counts.tsv: ${feature-counts}
