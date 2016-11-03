@@ -300,7 +300,8 @@ feature-counts: ${feature-counts}
 
 data/quant/%.tsv: data/mapped/%.bam ${apis-viral-annotation}
 	@$(mkdir)
-	${bsub} "featureCounts -p -t gene -g gene_id -M -O -a '$(lastword $+)' -o '$@' '$<'"
+	${bsub} -M1000 -R'select[mem>1000] rusage[mem=1000]' \
+		"featureCounts -p -t gene -g gene_id -M -O -a '$(lastword $+)' -o '$@' '$<'"
 
 data/quant/royal-jelly-counts.tsv: ${feature-counts}
 	./scripts/merge-counts -o '$@' $+
