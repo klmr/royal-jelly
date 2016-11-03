@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+infile="$1"
+read1="$2"
+read2="$3"
+
+cleanup() {
+    rm -f "$read1.tmp" "$read2.tmp"
+}
+
+trap cleanup EXIT
+
+samtools bam2fq -f4 "$infile" -1 "$read1.tmp" -2 "$read2.tmp"
+
+collapse() {
+    seqtk seq -A "$1.tmp" \
+    | fastx_collapser \
+    > "$1"
+}
+
+collapse "$read1" &
+collapse "$read2"
