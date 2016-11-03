@@ -240,7 +240,7 @@ data/qc/%_fastqc.zip: data/trimmed/%.fastq.gz
 ## Quality control report
 qc-report: data/qc/multiqc_report.html
 
-data/qc/multiqc_report.html: ${fastqc-files} ${trimmed-libraries} ${mapped-reads} ${feature-counts}
+data/qc/multiqc_report.html: ${fastqc-files} ${trimmed-libraries} ${mapped-reads} ${feature-counts} ${insert-sizes}
 	multiqc --force --outdir data/qc $(sort $(dir $+))
 
 .PHONY: insert-sizes
