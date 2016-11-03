@@ -312,6 +312,15 @@ data/coverage/%.bw: data/coverage/%.bedgraph ${apis-viral-index}
 	${bsub} $(call mem,1000) \
 		"bedGraphToBigWig '$<' '${apis-viral-index:Genome=chrNameLength.txt}' '$@'"
 
+.PHONY: unmapped-reads
+## Gather unmapped reads into fasta files
+unmapped-reads: ${unmapped-reads}
+
+data/unmapped/%_R1.fasta: data/mapped/%.bam
+	@$(mkdir)
+	${bsub} -n 2 $(call mem,2000) \
+		"./scripts/gather-unique-unmapped-reads '$<' '$@' '$(subst _R1,_R2,$@)'"
+
 #
 # Feature counts
 #
