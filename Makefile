@@ -287,7 +287,7 @@ data/coverage/%.genomecov: data/mapped/%.bam
 
 data/coverage/%.bedgraph: data/mapped/%.bam
 	@$(mkdir)
-	${bsub} $(call mem,1000) ./scripts/sorted-bedgraph '$<' '$@'
+	${bsub} $(call mem,1000) "./scripts/sorted-bedgraph '$<' '$@'"
 
 data/coverage/%.bw: data/coverage/%.bedgraph ${apis-viral-index}
 	${bsub} $(call mem,1000) \
