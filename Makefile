@@ -50,10 +50,7 @@ read-lengths = $(subst .fastq.gz,.txt,$(subst /trimmed/,/qc/read-lengths/,${trim
 mapped-reads = $(subst .fastq.gz,.bam,$(subst _R1_,_,$(call keep,_R1_,$(subst /trimmed/,/mapped/,${trimmed-libraries}))))
 .PRECIOUS: ${mapped-reads}
 
-mapped-sorted-reads = ${mapped-reads:.bam=.sorted.bam}
-.PRECIOUS: ${mapped-sorted-reads}
-
-mapped-indexed-reads = ${mapped-sorted-reads:.bam=.bam.bai}
+mapped-indexed-reads = ${mapped-reads:.bam=.bam.bai}
 .PRECIOUS: ${mapped-indexed-reads}
 
 read-coverage = $(patsubst %.bam,%.genomecov,$(subst /mapped/,/coverage/,${mapped-reads}))
@@ -281,7 +278,7 @@ data/mapped/%.bam.bai: data/mapped/%.bam
 ## Compute per-base read coverage over the bee/viral genomes
 read-coverage: ${read-coverage}
 
-data/coverage/%.genomecov: data/mapped/%.sorted.bam
+data/coverage/%.genomecov: data/mapped/%.bam
 	@$(mkdir)
 	${bsub} -M2000 -R'select[mem>2000] rusage[mem=2000]' \
 		"bedtools genomecov -d -ibam '$<' > '$@'"
