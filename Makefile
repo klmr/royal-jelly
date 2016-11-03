@@ -217,12 +217,23 @@ data/human-mapped/%.bam: $$(call read-files,$$@) ${homo-index}
 ## Map reads to reference of bee genome and viral genomes
 map-reads: ${mapped-reads}
 
-data/mapped/%.bam: $$(call read-files,$$@) ${apis-viral-index}
+data/mapped/long/%.bam: $$(call read-files,$$@) ${apis-viral-index}
 	@$(mkdir)
 	${bsub} -n 12 $(call mem,24000) \
 		"STAR --runThreadN 12 --genomeDir '$(dir $(lastword $^))' \
 		--runMode alignReads --alignEndsType Local \
 		--outFilterMismatchNoverLmax 0.15 --outFilterMultimapNmax 10 \
+		--readFilesIn $(call read-files,$@) --readFilesCommand 'gunzip -c' \
+		--outSAMtype BAM SortedByCoordinate --outSAMunmapped Within \
+		--outFileNamePrefix '$(basename $@)'"
+	mv "$(basename $@)Aligned.sortedByCoord.out.bam" "$(basename $@).bam"
+
+data/mapped/short/%.bam: $$(call read-files,$$@) ${apis-viral-index}
+	@$(mkdir)
+	${bsub} -n 12 $(call mem,24000) \
+		"STAR --runThreadN 12 --genomeDir '$(dir $(lastword $^))' \
+		--runMode alignReads --alignEndsType Local \
+		--outFilterMismatchNoverLmax 0.05 --outFilterMultimapNmax 10000 \
 		--readFilesIn $(call read-files,$@) --readFilesCommand 'gunzip -c' \
 		--outSAMtype BAM SortedByCoordinate --outSAMunmapped Within \
 		--outFileNamePrefix '$(basename $@)'"
