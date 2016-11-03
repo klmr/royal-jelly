@@ -274,10 +274,6 @@ data/qc/read-lengths/read-length-density.pdf: ${read-lengths}
 # Visualise mapping
 #
 
-data/mapped/%.sorted.bam: data/mapped/%.bam
-	${bsub} -M8000 -R'select[mem>8000] rusage[mem=8000]' \
-		"samtools sort -m8G -o '$@' '$<'"
-
 data/mapped/%.bam.bai: data/mapped/%.bam
 	${bsub} "samtools index '$<'"
 
