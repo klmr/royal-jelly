@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+input="$1"
+output="$2"
+
+( \
+    samtools view -H "$input";
+    samtools view "$input" | awk '$9 >= 18 || $9 <= -18 {print}'
+) \
+| samtools view -Sb \
+> "$output"
