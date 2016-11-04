@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 infile="$1"
 outfile="$2"
+shift 2
+rest="$@"
 
-bedtools genomecov -bg -ibam "$infile" \
+bedtools genomecov ${rest[@]} -bg -ibam "$infile" \
 | LC_COLLATE=C sort -k1,1 -k2,2n \
 > "$outfile"
