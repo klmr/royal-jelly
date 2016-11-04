@@ -231,7 +231,7 @@ data/mapped/long/%.bam: $$(call read-files,$$@) ${apis-viral-index}
 		--outFileNamePrefix '$(basename $@)'"
 	mv "$(basename $@)Aligned.sortedByCoord.out.bam" "$(basename $@).bam"
 
-data/mapped/short/%.Aligned.sortedByCoord.out.bam: $$(call read-files,$$@) ${apis-viral-index}
+data/mapped/short/%Aligned.sortedByCoord.out.bam: $$(call read-files,$$@) ${apis-viral-index}
 	@$(mkdir)
 	${bsub} -n 12 $(call mem,24000) \
 		"STAR --runThreadN 12 --genomeDir '$(dir $(lastword $^))' \
