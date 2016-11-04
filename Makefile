@@ -12,7 +12,7 @@ mem = -M$1 -R'select[mem>$1] rusage[mem=$1]'
 
 raw-library-files = $(shell echo $(addsuffix *_L001_*,$(addprefix raw/,$(shell grep $1 raw/samples.csv | grep '^1' | cut -d, -f2 | tr _ -))))
 library-files = $(subst _L001_,_merged_,$(addprefix $2,$(notdir $(call raw-library-files,$1))))
-read-files = $(foreach i,R1 R2,$(shell sed 's,data/[^/]*/,data/trimmed/,' <<< '$(subst _001,_${i}_001,${1:.bam=.fastq.gz})'))
+read-files = $(subst Aligned.sortedByCoord.out,,$(foreach i,R1 R2,$(shell sed 's,data/[^/]*/,data/trimmed/,' <<< '$(subst _001,_${i}_001,${1:.bam=.fastq.gz})')))
 
 include binaries.make
 
@@ -58,7 +58,8 @@ mapped-indexed-reads = ${mapped-reads:.bam=.bam.bai}
 read-coverage = $(patsubst %.bam,%.genomecov,$(subst /mapped/,/coverage/,${mapped-reads}))
 .PRECIOUS: ${read-coverage}
 
-bigwig-files = $(patsubst %.bam,%.bw,$(subst /mapped/,/coverage/,${mapped-reads}))
+bigwig-plus-files = $(patsubst %.bam,%.bw,$(subst /mapped/,/coverage/,${mapped-reads}))
+bigwig-files = ${bigwig-plus-files} $(patsubst %.bw,%-minus.bw,${bigwig-plus-files})
 .PRECIOUS: ${bigwig-files}
 
 homo-mapped-reads = $(subst /mapped/,/human-mapped/,${mapped-reads})
@@ -311,7 +312,13 @@ bigwig: ${bigwig-files}
 
 data/coverage/%.bedgraph: data/mapped/%.bam
 	@$(mkdir)
-	${bsub} $(call mem,1000) "./scripts/sorted-bedgraph '$<' '$@'"
+	${bsub} $(call mem,1000) "./scripts/sorted-bedgraph '$<' '$@' -strand +"
+
+data/coverage/%-minus.bedgraph: data/mapped/%.bam
+	@$(mkdir)
+	${bsub} $(call mem,1000) "./scripts/sorted-bedgraph '$<' '$@.tmp' -strand -"
+	awk -vOFS=$$'\t' '{print $$1,$$2,$$3,-$$4}' '$@.tmp' > '$@'
+	rm '$@.tmp'
 
 data/coverage/%.bw: data/coverage/%.bedgraph ${apis-viral-index}
 	${bsub} $(call mem,1000) \
