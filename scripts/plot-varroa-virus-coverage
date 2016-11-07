@@ -1,5 +1,9 @@
 #!/usr/bin/env/Rscript
 
+sys = modules::import('klmr/sys')
+
+
+sys$run({
 io = modules::import('ebi-predocs/ebits/io')
 data = io$read_table('data/coverage/MJ3-G-20_S10-varroa-destructor-virus-1.tsv')[, -1]
 
@@ -20,5 +24,6 @@ ggplot(data) +
     scale_x_continuous(breaks = round(tile_range(range(data$V2), 10)),
                        limits = c(1, nice_ceiling(max(data$V2), 100)),
                        expand = c(0, 0))
+})
 
 # vim: ft=r
