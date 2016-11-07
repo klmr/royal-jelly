@@ -4,26 +4,26 @@ sys = modules::import('klmr/sys')
 
 
 sys$run({
-io = modules::import('ebi-predocs/ebits/io')
-data = io$read_table('data/coverage/MJ3-G-20_S10-varroa-destructor-virus-1.tsv')[, -1]
+    io = modules::import('ebi-predocs/ebits/io')
+    data = io$read_table('data/coverage/MJ3-G-20_S10-varroa-destructor-virus-1.tsv')[, -1]
 
-modules::import_package('ggplot2', attach = TRUE)
+    modules::import_package('ggplot2', attach = TRUE)
 
-theme_set(theme_minimal())
+    theme_set(theme_minimal())
 
-tile_range = function (range, tiles)
-    seq(range[1], range[2], length.out = tiles + 1)
+    tile_range = function (range, tiles)
+        seq(range[1], range[2], length.out = tiles + 1)
 
-nice_ceiling = function (n, accuracy)
-    ceiling(n / accuracy) * accuracy
+    nice_ceiling = function (n, accuracy)
+        ceiling(n / accuracy) * accuracy
 
-ggplot(data) +
-    aes(V2, ymin = 0, ymax = V3) +
-    geom_ribbon() +
-    labs(x = 'Position (bp)', y = 'Coverage') +
-    scale_x_continuous(breaks = round(tile_range(range(data$V2), 10)),
-                       limits = c(1, nice_ceiling(max(data$V2), 100)),
-                       expand = c(0, 0))
+    ggplot(data) +
+        aes(V2, ymin = 0, ymax = V3) +
+        geom_ribbon() +
+        labs(x = 'Position (bp)', y = 'Coverage') +
+        scale_x_continuous(breaks = round(tile_range(range(data$V2), 10)),
+                           limits = c(1, nice_ceiling(max(data$V2), 100)),
+                           expand = c(0, 0))
 })
 
 # vim: ft=r
