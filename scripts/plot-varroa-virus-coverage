@@ -2,14 +2,11 @@
 
 sys = modules::import('klmr/sys')
 
-zip_values = function (..., fun = cbind) {
-    if (identical(fun, cbind))
-        # MUCH more efficient.
-        # FIXME: Different result when length(list(...)) == 1 && class(list(...)[[1]])) == 'data.frame'
-        as.vector(do.call(rbind, list(...)))
-    else
-        as.vector(apply(do.call(cbind, list(...)), 1, fun))
-}
+zip_values = function (...)
+    as.vector(do.call(rbind, list(...)))
+
+zip_values_with = function (fun, ...)
+    do.call(mapply, c(list(fun), list(...)))
 
 #' Convert an Rle object to a ribbon surface
 #'
