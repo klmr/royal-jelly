@@ -29,10 +29,13 @@ sys$run({
     args = list(
         plus = 'data/coverage/short/MJ3-13-19_S6_merged_001.bw',
         minus = 'data/coverage/short/MJ3-13-19_S5_merged_001-minus.bw',
+        bam = 'data/mapped/short/MJ3-13-19_S6_merged_001.bam',
         annotation = '../shared/annotation/Apis_mellifera.GCA_000002195.1-viruses/Apis_mellifera.GCA_000002195.1.32-viruses.gtf'
     )
     rtl = modules::import_package('rtracklayer')
     gr = modules::import_package('GenomicRanges')
+
+    sam = modules::import_package('Rsamtools')
 
     modules::import_package('dplyr', attach = TRUE)
     modules::import_package('ggplot2', attach = TRUE)
@@ -43,6 +46,20 @@ sys$run({
         `[`(grep('Varroa', gr$mcols(annotation)$gene_name)) %>%
         as.character() %>%
         head(1)
+
+    varroa_annotation = annotation[gr$seqnames(annotation) == varroa_seqname][1]
+
+    flag = sam$scanBamFlag(isPaired = TRUE,
+                           isMinusStrand = FALSE,
+                           isUnmappedQuery = FALSE)
+    param = sam$ScanBamParam(flag = flag,
+                             what = sam$scanBamWhat(),
+                             which = varroa_annotation)
+
+    reads = sam$scanBam(args$bam, param = param)[[1]]
+
+    bands = c(0, 20, 30, 50, 500)
+    read_bins = cut(reads$isize, bands)
 
     varroa_coverage = function (coverage) {
         result = coverage[gr$seqnames(coverage) == varroa_seqname]
