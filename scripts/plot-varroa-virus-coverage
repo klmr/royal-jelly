@@ -16,7 +16,8 @@ zip_values = function (..., fun = cbind) {
 #' @param rle the Rle object
 rle_to_surface = function (rle) {
     modules::import_package('S4Vectors', attach = TRUE)
-    tibble(pos = zip_values(start(rle), end(rle)), score = rep(runValue(rle), 2))
+    tibble(pos = zip_values(start(rle), end(rle)),
+           score = rep(runValue(rle), each = 2))
 }
 
 geom_coverage = function (mapping = NULL, data = NULL) {
