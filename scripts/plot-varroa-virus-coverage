@@ -2,10 +2,10 @@
 
 sys = modules::import('klmr/sys')
 
-zip_values = function (...)
+zip = function (...)
     as.vector(do.call(rbind, list(...)))
 
-zip_values_with = function (fun, ...)
+zip_with = function (fun, ...)
     do.call(mapply, c(list(fun), list(...)))
 
 #' Convert an Rle object to a ribbon surface
@@ -13,7 +13,7 @@ zip_values_with = function (fun, ...)
 #' @param rle the Rle object
 rle_to_surface = function (rle) {
     modules::import_package('S4Vectors', attach = TRUE)
-    tibble(pos = zip_values(start(rle), end(rle)),
+    tibble(pos = zip(start(rle), end(rle)),
            score = rep(runValue(rle), each = 2))
 }
 
