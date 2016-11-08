@@ -37,6 +37,19 @@ sys$run({
     modules::import_package('dplyr', attach = TRUE)
     modules::import_package('ggplot2', attach = TRUE)
 
+    annotation = rtl$import(args$annotation)
+
+    varroa_seqname = gr$seqnames(annotation) %>%
+        `[`(grep('Varroa', gr$mcols(annotation)$gene_name)) %>%
+        as.character() %>%
+        head(1)
+
+    varroa_coverage = function (coverage) {
+        result = coverage[gr$seqnames(coverage) == varroa_seqname]
+        GenomeInfoDb::seqlevels(result) = varroa_seqname
+        result
+    }
+
     theme_set(theme_minimal())
 
     tile_range = function (range, tiles)
