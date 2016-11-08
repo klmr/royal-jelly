@@ -29,8 +29,11 @@ geom_coverage = function (mapping = NULL, data = NULL) {
 }
 
 sys$run({
-    io = modules::import('ebi-predocs/ebits/io')
-    data = io$read_table('data/coverage/MJ3-G-20_S10-varroa-destructor-virus-1.tsv')[, -1]
+    args = list(
+        plus = 'data/coverage/short/MJ3-13-19_S6_merged_001.bw',
+        minus = 'data/coverage/short/MJ3-13-19_S5_merged_001-minus.bw',
+        annotation = '../shared/annotation/Apis_mellifera.GCA_000002195.1-viruses/Apis_mellifera.GCA_000002195.1.32-viruses.gtf'
+    )
     rtl = modules::import_package('rtracklayer')
     gr = modules::import_package('GenomicRanges')
 
@@ -49,6 +52,9 @@ sys$run({
         GenomeInfoDb::seqlevels(result) = varroa_seqname
         result
     }
+
+    coverage_plus = varroa_coverage(rtl$import(args$plus))
+    coverage_minus = varroa_coverage(rtl$import(args$minus))
 
     theme_set(theme_minimal())
 
