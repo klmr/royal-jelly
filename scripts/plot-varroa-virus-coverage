@@ -17,6 +17,8 @@ sys$run({
     nice_ceiling = function (n, accuracy)
         ceiling(n / accuracy) * accuracy
 
+    modules::import_package('ggplot2', attach = TRUE)
+
     ggplot(data) +
         aes(V2, ymin = 0, ymax = V3) +
         geom_ribbon() +
