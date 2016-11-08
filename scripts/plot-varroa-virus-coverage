@@ -58,7 +58,7 @@ sys$run({
 
     reads = sam$scanBam(args$bam, param = param)[[1]]
 
-    bands = c(0, 20, 30, 50, 500)
+    bands = c(0, 20, 30, 50, Inf)
     read_bins = cut(reads$isize, bands)
 
     varroa_coverage = function (coverage) {
