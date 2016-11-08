@@ -2,11 +2,38 @@
 
 sys = modules::import('klmr/sys')
 
+zip_values = function (..., fun = cbind) {
+    if (identical(fun, cbind))
+        # MUCH more efficient.
+        # FIXME: Different result when length(list(...)) == 1 && class(list(...)[[1]])) == 'data.frame'
+        as.vector(do.call(rbind, list(...)))
+    else
+        as.vector(apply(do.call(cbind, list(...)), 1, fun))
+}
+
+#' Convert an Rle object to a ribbon surface
+#'
+#' @param rle the Rle object
+rle_to_surface = function (rle) {
+    modules::import_package('S4Vectors', attach = TRUE)
+    tibble(pos = zip_values(start(rle), end(rle)), score = rep(runValue(rle), 2))
+}
+
+geom_coverage = function (mapping = NULL, data = NULL) {
+    surface = lapply(gr$coverage(data, weight = 'score'), rle_to_surface) %>%
+        Map(function (name, x) mutate(x, seqname = name), names(.), .) %>%
+        bind_rows()
+
+    geom_ribbon(aes(x = pos, ymax = score), data = surface, ymin = 0)
+}
 
 sys$run({
     io = modules::import('ebi-predocs/ebits/io')
     data = io$read_table('data/coverage/MJ3-G-20_S10-varroa-destructor-virus-1.tsv')[, -1]
+    rtl = modules::import_package('rtracklayer')
+    gr = modules::import_package('GenomicRanges')
 
+    modules::import_package('dplyr', attach = TRUE)
     modules::import_package('ggplot2', attach = TRUE)
 
     theme_set(theme_minimal())
