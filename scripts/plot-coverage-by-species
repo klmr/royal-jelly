@@ -61,7 +61,7 @@ sys$run({
         geom_boxplot(lwd = 1) +
         facet_wrap(~ Which) +
         scale_color_manual(values = c('#404040', '#802020'), guide = FALSE) +
-        theme(axis.text.x = element_text(angle = -45, hjust = 0),
+        theme(axis.text.x = element_text(angle = 45, hjust = 1),
               strip.text = element_text(size = 12))
 
     ggsave('data/plots/per-species-coverage-long-boxplot.pdf')
@@ -76,7 +76,7 @@ sys$run({
         #geom_bar(stat = 'identity', width = 1) +
         facet_wrap(~ Which) +
         scale_color_manual(values = c('#404040', '#802020'), guide = FALSE) +
-        theme(axis.text.x = element_text(angle = -45, hjust = 0),
+        theme(axis.text.x = element_text(angle = 45, hjust = 1),
               strip.text = element_text(size = 12))
 
     ggsave('data/plots/per-species-coverage-short-boxplot.pdf')
