@@ -54,7 +54,8 @@ sys$run({
     # Only plot libraries which contribute at least 1% of the coverage.
     species_coverage %>%
         filter(Description == 'long') %>%
-        filter(Fraction >= 0.01) %>%
+        group_by(Which, Species) %>%
+        filter(any(Fraction >= 0.01)) %>%
         ggplot() +
         aes(Species, Count, color = Species == 'Apis mellifera') +
         geom_boxplot(lwd = 1) +
@@ -67,7 +68,8 @@ sys$run({
 
     species_coverage %>%
         filter(Description == 'short') %>%
-        filter(Fraction >= 0.01) %>%
+        group_by(Which, Species) %>%
+        filter(any(Fraction >= 0.01)) %>%
         ggplot() +
         aes(Species, Count, color = Species == 'Apis mellifera') +
         geom_boxplot(lwd = 1) +
