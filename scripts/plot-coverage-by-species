@@ -33,7 +33,7 @@ sys$run({
         mutate(Species = ifelse(is.na(Species), 'Apis mellifera', Species)) %>%
         mutate(Species = relevel(factor(Species), 'Apis mellifera')) %>%
         left_join(annotation, by = 'Gene') %>%
-        mutate(Which = ifelse(grepl('^MJ3', Library), 'MRJP3', 'Royal jelly'))
+        mutate(Which = ifelse(grepl('^MJ3', Library), 'MJ3', 'RJ'))
 
     species_coverage = coverage %>%
         group_by(Library, Description, Which, Species) %>%
