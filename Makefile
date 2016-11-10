@@ -13,6 +13,7 @@ mem = -M$1 -R'select[mem>$1] rusage[mem=$1]'
 raw-library-files = $(shell echo $(addsuffix *_L001_*,$(addprefix raw/,$(shell grep $1 raw/samples.csv | grep '^1' | cut -d, -f2 | tr _ -))))
 library-files = $(subst _L001_,_merged_,$(addprefix $2,$(notdir $(call raw-library-files,$1))))
 read-files = $(subst Aligned.sortedByCoord.out,,$(foreach i,R1 R2,$(shell sed 's,data/[^/]*/,data/trimmed/,' <<< '$(subst _001,_${i}_001,${1:.bam=.fastq.gz})')))
+untrimmed-read-files = $(subst Aligned.sortedByCoord.out,,$(foreach i,R1 R2,$(shell sed 's,data/[^/]*/\(short\|long\)/,data/merged/,' <<< '$(subst _001,_${i}_001,${1:.bam=.fastq.gz})')))
 
 include binaries.make
 
@@ -51,6 +52,9 @@ read-lengths = $(subst .fastq.gz,.txt,$(subst /trimmed/,/qc/read-lengths/,${trim
 
 mapped-reads = $(subst .fastq.gz,.bam,$(subst _R1_,_,$(call keep,_R1_,$(subst /trimmed/,/mapped/,${trimmed-libraries}))))
 .PRECIOUS: ${mapped-reads}
+
+mapped-viral-reads = $(subst /mapped/,/viral-mapped/,${mapped-reads})
+.PRECIOUS: ${mapped-viral-reads}
 
 mapped-indexed-reads = ${mapped-reads:.bam=.bam.bai}
 .PRECIOUS: ${mapped-indexed-reads}
@@ -244,6 +248,36 @@ data/mapped/short/%Aligned.sortedByCoord.out.bam: $$(call read-files,$$@) ${apis
 		--outFileNamePrefix '$(basename $@)'"
 
 data/mapped/short/%.bam: data/mapped/short/%Aligned.sortedByCoord.out.bam
+	${bsub} "./scripts/filter-short-reads '$<' '$@'"
+
+.PHONY: map-untrimmed-reads-to-viral
+## Map untrimmed reads to reference of viral genomes
+map-untrimmed-reads-to-viral: ${mapped-viral-reads}
+
+data/viral-mapped/long/%.bam: $$(call untrimmed-read-files,$$@) ${viral-index}
+	@$(mkdir)
+	${bsub} -n 6 $(call mem,12000) \
+		"STAR --runThreadN 6 --genomeDir '$(dir $(lastword $^0))' \
+		--runMode alignReads --alignEndsType Local \
+		--outFilterMismatchNoverLmax 0.15 --outFilterMultimapNmax 10 \
+		--readFilesIn $(call untrimmed-read-files,$@) --readFilesCommand 'gunzip -c' \
+		--outSAMtype BAM SortedByCoordinate --limitBAMsortRAM 4294967296 \
+		--outFileNamePrefix '$(basename $@)'"
+	mv "$(basename $@)Aligned.sortedByCoord.out.bam" "$(basename $@).bam"
+
+data/viral-mapped/short/%Aligned.sortedByCoord.out.bam: $$(call untrimmed-read-files,$$@) ${viral-index}
+	@$(mkdir)
+	${bsub} -n 6 $(call mem,12000) \
+		"STAR --runThreadN 6 --genomeDir '$(dir $(lastword $^0))' \
+		--runMode alignReads --alignEndsType Local \
+		--outFilterMatchNmin 18 \
+		--outFilterMismatchNoverLmax 0.05 --outFilterMultimapNmax 10000 \
+		--readFilesIn $(call untrimmed-read-files,$@) --readFilesCommand 'gunzip -c' \
+		--outSAMtype BAM SortedByCoordinate --limitBAMsortRAM 4294967296 \
+		--outFileNamePrefix '$(basename $@)'"
+	mv "$(basename $@)Aligned.sortedByCoord.out.bam" "$(basename $@).bam"
+
+data/viral-mapped/short/%.bam: data/viral-mapped/short/%Aligned.sortedByCoord.out.bam
 	${bsub} "./scripts/filter-short-reads '$<' '$@'"
 
 #
