@@ -277,7 +277,6 @@ data/viral-mapped/short/%Aligned.sortedByCoord.out.bam: $$(call untrimmed-read-f
 		--readFilesIn $(call untrimmed-read-files,$@) --readFilesCommand 'gunzip -c' \
 		--outSAMtype BAM SortedByCoordinate --limitBAMsortRAM 4294967296 \
 		--outFileNamePrefix '$(basename $@)'"
-	mv "$(basename $@)Aligned.sortedByCoord.out.bam" "$(basename $@).bam"
 
 data/viral-mapped/short/%.bam: data/viral-mapped/short/%Aligned.sortedByCoord.out.bam
 	${bsub} "./scripts/filter-short-reads '$<' '$@'"
