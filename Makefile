@@ -2,6 +2,8 @@
 # Helpers
 #
 
+.DELETE_ON_ERROR:
+
 mkdir = mkdir -p '$(dir $@)'
 
 bsub = scripts/bsub -K
