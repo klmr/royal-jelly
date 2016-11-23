@@ -223,6 +223,14 @@ data/human-mapped/%.bam: $$(call read-files,$$@) ${homo-index}
 # Read mapping
 #
 
+# The small RNA libraries are in reality a mix of (unselected) short and long
+# transcripts. This means we need to treat small and long RNAs separately but,
+# alas, all our reads are 100bp. This calls for a careful (!) trimming of
+# adapters, and subsequent alignment using two different strategies: one
+# suitable for mapping small RNA, and one for longer transcripts. Both
+# strategies need to be conservative to avoid mis-identifying transcripts from
+# the other class.
+
 .PHONY: map-reads
 ## Map reads to reference of bee genome and viral genomes
 map-reads: ${mapped-reads}
