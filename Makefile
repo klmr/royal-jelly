@@ -186,6 +186,16 @@ data/trimmed/long/%R2_001.fastq.gz: data/merged/%R1_001.fastq.gz data/merged/%R2
 ## Trim short RNA-seq libraries
 trim-short: ${short-trimmed-libraries}
 
+# Fragment layout for paired-end NEXTflex libraries:
+#
+#                         +----------------- R1 ------------------->
+# +-----------------------|----------------------------------------------------+
+# | 5' adapter        NNNN|                            |NNNN        3' adapter |
+# +----------------------------------------------------|-----------------------+
+#             <----------------- R2 -------------------+
+#
+# “NNNN”: degenerate index bases (4 nt)
+
 data/trimmed/short/%R1_001.fastq.gz: data/merged/%R1_001.fastq.gz data/merged/%R2_001.fastq.gz
 	@$(mkdir)
 	${bsub} -n3 "cutadapt -a 'N{4}TGGAATTCTCGGGTGCCAAGG' -A 'N{4}GATCGTCGGACTGTAGAACTCTGAAC' \
