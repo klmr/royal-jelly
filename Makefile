@@ -256,18 +256,34 @@ data/mapped/long/%.bam: $$(call read-files,$$@) ${apis-viral-index}
 		--outFileNamePrefix '$(basename $@)'"
 	mv "$(basename $@)Aligned.sortedByCoord.out.bam" "$(basename $@).bam"
 
-data/mapped/short/%Aligned.sortedByCoord.out.bam: $$(call read-files,$$@) ${apis-viral-index}
+data/mapped/short-untrimmed/%.bam: $$(call untrimmed-read-files,$$@) ${viral-index}
+	@$(mkdir)
+	${bsub} -n 6 $(call mem,12000) \
+		"STAR --runThreadN 6 --genomeDir '$(dir $(lastword $^0))' \
+		--runMode alignReads --alignEndsType Local \
+		--outFilterMatchNmin 18 \
+		--outFilterScoreMinOverLread 0.2 --outFilterMatchNminOverLread 0.2 \
+		--outFilterMismatchNoverLmax 0.05 --outFilterMultimapNmax 10000 \
+		--readFilesIn $(call untrimmed-read-files,$@) --readFilesCommand 'gunzip -c' \
+		--outSAMtype BAM SortedByCoordinate --limitBAMsortRAM 4294967296 \
+		--outFileNamePrefix '$(basename $@)'"
+
+data/mapped/short-trimmed/%.bam:  $$(call read-files,$$@) ${apis-viral-index}
 	@$(mkdir)
 	${bsub} -n 12 $(call mem,24000) \
 		"STAR --runThreadN 12 --genomeDir '$(dir $(lastword $^))' \
 		--runMode alignReads --alignEndsType Local \
 		--outFilterMatchNmin 18 \
+		--outFilterScoreMinOverLread 0.1 --outFilterMatchNminOverLread 0.2 \
 		--outFilterMismatchNoverLmax 0.05 --outFilterMultimapNmax 10000 \
 		--readFilesIn $(call read-files,$@) --readFilesCommand 'gunzip -c' \
 		--outSAMtype BAM SortedByCoordinate --outSAMunmapped Within \
 		--outFileNamePrefix '$(basename $@)'"
 
-data/mapped/short/%.bam: data/mapped/short/%Aligned.sortedByCoord.out.bam
+data/mapped/short-untrimmed/%.bam: data/mapped/short-untrimmed/%Aligned.sortedByCoord.out.bam
+	${bsub} "./scripts/filter-short-reads '$<' '$@'"
+
+data/mapped/short-trimmed/%.bam: data/mapped/short-trimmed/%Aligned.sortedByCoord.out.bam
 	${bsub} "./scripts/filter-short-reads '$<' '$@'"
 
 .PHONY: map-untrimmed-reads-to-viral
