@@ -40,6 +40,15 @@ mapped-reads() {
     done
 }
 
+insert-size() {
+    local file
+    for file in data/isize/*/*.tsv
+    do
+        _prettify "$file"
+        grep '^MEDIAN_INSERT_SIZE' --after-context 1 "$file" | tail -1 | cut -f1
+    done
+}
+
 if [[ $# == 0 ]]; then
     echo 'Available commands:'
     echo
