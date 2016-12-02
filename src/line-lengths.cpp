@@ -1,7 +1,7 @@
 #include <cstdlib>
 #include <iostream>
 
-int main() {
+auto main() -> int {
     std::ios_base::sync_with_stdio(false);
 
     auto chr = char{};
