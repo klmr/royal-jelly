@@ -188,18 +188,18 @@ trim-short: ${short-trimmed-libraries}
 
 # Fragment layout for paired-end NEXTflex libraries:
 #
-#                         +----------------- R1 ------------------->
-# +-----------------------|----------------------------------------------------+
-# | 5' adapter        NNNN|                            |NNNN        3' adapter |
-# +----------------------------------------------------|-----------------------+
-#             <----------------- R2 -------------------+
+#                    +-------------------- R1 --------------------->
+# +------------------|---------------------------------------------------------+
+# | 5ʹ adapter       |NNNN                              NNNN|       3ʹ adapter |
+# +---------------------------------------------------------|------------------+
+#             <------------------- R2 ----------------------+
 #
 # “NNNN”: degenerate index bases (4 nt)
 
 data/trimmed/short/%R1_001.fastq.gz: data/merged/%R1_001.fastq.gz data/merged/%R2_001.fastq.gz
 	@$(mkdir)
 	${bsub} -n3 "cutadapt -a 'N{4}TGGAATTCTCGGGTGCCAAGG' -A 'N{4}GATCGTCGGACTGTAGAACTCTGAAC' \
-		--minimum-length 10 --overlap 10 \
+		--cut 4 --minimum-length 10 --overlap 10 \
 		-o '$@' -p '$(subst _R1_,_R2_,$@)' '$(firstword $+)' '$(lastword $+)' \
 		> '${@:.fastq.gz=.log}'"
 
