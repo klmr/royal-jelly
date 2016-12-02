@@ -262,6 +262,7 @@ data/mapped/short-untrimmed/%Aligned.sortedByCoord.out.bam: $$(call untrimmed-re
 		"STAR --runThreadN 6 --genomeDir '$(dir $(lastword $^0))' \
 		--runMode alignReads --alignEndsType Local \
 		--outFilterMatchNmin 18 \
+		--alignIntronMax 1 --scoreInsOpen -10000 --scoreDelOpen -10000 \
 		--outFilterScoreMinOverLread 0.2 --outFilterMatchNminOverLread 0.2 \
 		--outFilterMismatchNoverLmax 0.05 --outFilterMultimapNmax 10000 \
 		--readFilesIn $(call untrimmed-read-files,$@) --readFilesCommand 'gunzip -c' \
@@ -272,8 +273,9 @@ data/mapped/short-trimmed/%Aligned.sortedByCoord.out.bam: $$(call read-files,$$@
 	@$(mkdir)
 	${bsub} -n 12 $(call mem,24000) \
 		"STAR --runThreadN 12 --genomeDir '$(dir $(lastword $^))' \
-		--runMode alignReads --alignEndsType Local \
+		--runMode alignReads --alignEndsType EndToEnd \
 		--outFilterMatchNmin 18 \
+		--alignIntronMax 1 --scoreInsOpen -10000 --scoreDelOpen -10000 \
 		--outFilterScoreMinOverLread 0.1 --outFilterMatchNminOverLread 0.2 \
 		--outFilterMismatchNoverLmax 0.05 --outFilterMultimapNmax 10000 \
 		--readFilesIn $(call read-files,$@) --readFilesCommand 'gunzip -c' \
