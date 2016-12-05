@@ -267,7 +267,7 @@ data/mapped/short-untrimmed/%Aligned.sortedByCoord.out.bam: $$(call untrimmed-re
 		--outFilterMismatchNoverLmax 0.05 --outFilterMultimapNmax 10000 \
 		--readFilesIn $(call untrimmed-read-files,$@) --readFilesCommand 'gunzip -c' \
 		--outSAMtype BAM SortedByCoordinate --limitBAMsortRAM 4294967296 \
-		--outFileNamePrefix '$(basename $@)'"
+		--outFileNamePrefix '${@D}/$(basename $*)'"
 
 data/mapped/short-trimmed/%Aligned.sortedByCoord.out.bam: $$(call read-files,$$@) ${apis-viral-index}
 	@$(mkdir)
@@ -280,7 +280,7 @@ data/mapped/short-trimmed/%Aligned.sortedByCoord.out.bam: $$(call read-files,$$@
 		--outFilterMismatchNoverLmax 0.05 --outFilterMultimapNmax 10000 \
 		--readFilesIn $(call read-files,$@) --readFilesCommand 'gunzip -c' \
 		--outSAMtype BAM SortedByCoordinate --outSAMunmapped Within \
-		--outFileNamePrefix '$(basename $@)'"
+		--outFileNamePrefix '${@D}/$(basename $*)'"
 
 data/mapped/short-untrimmed/%.bam: data/mapped/short-untrimmed/%Aligned.sortedByCoord.out.bam
 	${bsub} "./scripts/filter-short-reads '$<' '$@'"
