@@ -199,7 +199,7 @@ trim-short: ${short-trimmed-libraries}
 data/trimmed/short/%R1_001.fastq.gz: data/merged/%R1_001.fastq.gz data/merged/%R2_001.fastq.gz
 	@$(mkdir)
 	${bsub} -n3 "cutadapt -a 'N{4}TGGAATTCTCGGGTGCCAAGG' -A 'N{4}GATCGTCGGACTGTAGAACTCTGAAC' \
-		--cut 4 --minimum-length 10 --overlap 10 \
+		--cut 4 --minimum-length 10 --overlap 10 --trim-n -q 20,20 \
 		-o '$@' -p '$(subst _R1_,_R2_,$@)' '$(firstword $+)' '$(lastword $+)' \
 		> '${@:.fastq.gz=.log}'"
 
