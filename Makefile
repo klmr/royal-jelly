@@ -259,7 +259,7 @@ data/mapped/long/%.bam: $$(call read-files,$$@) ${apis-viral-index}
 data/mapped/short-untrimmed/%Aligned.sortedByCoord.out.bam: $$(call untrimmed-read-files,$$@) ${viral-index}
 	@$(mkdir)
 	${bsub} -n 6 $(call mem,12000) \
-		"STAR --runThreadN 6 --genomeDir '$(dir $(lastword $^0))' \
+		"STAR --runThreadN 6 --genomeDir '$(dir $(lastword $^))' \
 		--runMode alignReads --alignEndsType Local \
 		--outFilterMatchNmin 18 \
 		--alignIntronMax 1 --scoreInsOpen -10000 --scoreDelOpen -10000 \
