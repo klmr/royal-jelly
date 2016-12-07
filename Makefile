@@ -404,6 +404,12 @@ data/unmapped/%_R1.fasta: data/mapped/%.bam
 	${bsub} -n 2 $(call mem,2000) \
 		"./scripts/gather-unique-unmapped-reads '$<' '$@' '$(subst _R1,_R2,$@)'"
 
+short-read-frequencies = $(subst /mapped/short-trimmed/,/short-reads/,$(call keep,short-trimmed,${mapped-reads:.bam=-freq.tsv}))
+
+.PHONY: short-read-frequencies
+## Tabulate the read frequencies for the trimmed small RNA read libraries
+short-read-frequencies: ${short-read-frequencies}
+
 data/short-reads/%-freq.tsv: data/mapped/short-trimmed/%.bam
 	@$(mkdir)
 	${bsub} \
