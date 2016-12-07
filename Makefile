@@ -404,6 +404,16 @@ data/unmapped/%_R1.fasta: data/mapped/%.bam
 	${bsub} -n 2 $(call mem,2000) \
 		"./scripts/gather-unique-unmapped-reads '$<' '$@' '$(subst _R1,_R2,$@)'"
 
+data/short-reads/%-freq.tsv: data/mapped/short-trimmed/%.bam
+	@$(mkdir)
+	${bsub} \
+		"$$SHELL -c 'samtools view -F4 "'"$<"'" \
+		| cut -f10 \
+		| sort \
+		| uniq -c \
+		| sort -nrk1 \
+		> "'"$@"'"'"
+
 #
 # Feature counts
 #
