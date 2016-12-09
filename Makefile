@@ -9,6 +9,7 @@ mkdir = mkdir -p '$(dir $@)'
 bsub = scripts/bsub -K
 
 keep = $(foreach i,$2,$(if $(findstring $1,$i),$i))
+filter_out = $(foreach i,$2,$(if $(findstring $1,$i),,$i))
 
 mem = -M$1 -R'select[mem>$1] rusage[mem=$1]'
 
