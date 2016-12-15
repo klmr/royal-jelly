@@ -1,0 +1,35 @@
+sys = modules::import('klmr/sys')
+
+read_top_n_reads = function (file, n)
+    io$read_table(file, sep = '', nrows = n) %>%
+    setNames(c('Count', 'Read')) %>%
+    mutate(File = file)
+
+sys$run({
+    args = list(dir = 'data/short-reads', annotation = 'raw/samples.csv')
+    io = modules::import('ebi-predocs/ebits/io')
+    modules::import_package('dplyr', attach = TRUE)
+    modules::import_package('tidyr', attach = TRUE)
+
+    annotation = io$read_table(args$annotation, header = TRUE)
+    files = dir(args$dir, full.names = TRUE)
+
+    top_reads = files %>%
+        lapply(read_top_n_reads, n = 100) %>%
+        bind_rows() %>%
+        extract(File, c('Medium', 'Lib'), '/(RJ|MJ3)-(\\d+)') %>%
+        arrange(Medium, Lib, Count) %>%
+        group_by(Medium, Lib) %>%
+        mutate(Rank = seq_len(n())) %>%
+        nest(Rank, Read) %>%
+        {Reduce(function (x, y) full_join(x, y, by = 'Read'), .$data)} %>%
+        mutate_at(vars(-Read), funs(ifelse(is.na(.), 0, .)))
+
+    modules::import_package('ggplot2', attach = TRUE)
+
+    ggplot(top_reads) +
+        aes(Rank, Rank.x) +
+        geom_point()
+})
+
+# vim: ft=r
