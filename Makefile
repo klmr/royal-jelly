@@ -415,7 +415,7 @@ data/short-reads/%-freq.tsv: data/trimmed/short/%_R1_001.fastq.gz
 	@$(mkdir)
 	${bsub} \
 		"$$SHELL -c 'gunzip -c "'"$<"'" \
-		| awk "'"NR % 4 == 1"'" \
+		| awk "'"NR % 4 == 2"'" \
 		| sort \
 		| uniq -c \
 		| sort -nrk1 \
