@@ -33,6 +33,8 @@ sys$run({
 
     modules::import_package('ggplot2', attach = TRUE)
 
+    theme_set(theme_minimal())
+
     ggplot(top_reads) +
         aes(Rank.x, RankMJ3) +
         geom_point()
