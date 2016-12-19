@@ -6,12 +6,11 @@ read_top_n_reads = function (file, n)
     mutate(File = file)
 
 sys$run({
-    args = list(dir = 'data/short-reads', annotation = 'raw/samples.csv')
+    args = list(dir = 'data/short-reads')
     io = modules::import('ebi-predocs/ebits/io')
     modules::import_package('dplyr', attach = TRUE)
     modules::import_package('tidyr', attach = TRUE)
 
-    annotation = io$read_table(args$annotation, header = TRUE)
     files = dir(args$dir, full.names = TRUE)
 
     top_reads = files %>%
