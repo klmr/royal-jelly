@@ -17,7 +17,7 @@ sys$run({
     files = dir(args$dir, full.names = TRUE)
 
     top_reads = files %>%
-        lapply(read_top_n_reads, n = 100) %>%
+        lapply(read_top_n_reads, n = 200) %>%
         bind_rows() %>%
         extract(File, c('Medium', 'Lib'), '/(RJ|MJ3)-(\\d+)') %>%
         arrange(Medium, Lib, Count) %>%
