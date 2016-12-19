@@ -9,13 +9,14 @@ mkdir = mkdir -p '$(dir $@)'
 bsub = scripts/bsub -K
 
 keep = $(foreach i,$2,$(if $(findstring $1,$i),$i))
+filter_out = $(foreach i,$2,$(if $(findstring $1,$i),,$i))
 
 mem = -M$1 -R'select[mem>$1] rusage[mem=$1]'
 
 raw-library-files = $(shell echo $(addsuffix *_L001_*,$(addprefix raw/,$(shell grep $1 raw/samples.csv | grep '^1' | cut -d, -f2 | tr _ -))))
 library-files = $(subst _L001_,_merged_,$(addprefix $2,$(notdir $(call raw-library-files,$1))))
-read-files = $(subst Aligned.sortedByCoord.out,,$(foreach i,R1 R2,$(shell sed 's,data/[^/]*/,data/trimmed/,' <<< '$(subst _001,_${i}_001,${1:.bam=.fastq.gz})')))
-untrimmed-read-files = $(subst Aligned.sortedByCoord.out,,$(foreach i,R1 R2,$(shell sed 's,data/[^/]*/\(short\|long\)/,data/merged/,' <<< '$(subst _001,_${i}_001,${1:.bam=.fastq.gz})')))
+read-files = $(subst Aligned.sortedByCoord.out,,$(foreach i,R1 R2,$(shell sed -e 's,data/[^/]*/,data/trimmed/,' -e 's,/short-[^/]*/,/short/,' <<< '$(subst _001,_${i}_001,${1:.bam=.fastq.gz})')))
+untrimmed-read-files = $(subst Aligned.sortedByCoord.out,,$(foreach i,R1 R2,$(shell sed 's,data/[^/]*/\(short\(-[^/]*\)\?\|long\)/,data/merged/,' <<< '$(subst _001,_${i}_001,${1:.bam=.fastq.gz})')))
 
 include binaries.make
 
@@ -52,7 +53,7 @@ trimmed-libraries = ${long-trimmed-libraries} ${short-trimmed-libraries}
 fastqc-files = $(patsubst %.fastq.gz,%_fastqc.zip,$(call library-files,long,data/qc/long/) $(call library-files,short,data/qc/short/))
 read-lengths = $(subst .fastq.gz,.txt,$(subst /trimmed/,/qc/read-lengths/,${trimmed-libraries}))
 
-mapped-reads = $(subst .fastq.gz,.bam,$(subst _R1_,_,$(call keep,_R1_,$(subst /trimmed/,/mapped/,${trimmed-libraries}))))
+mapped-reads = $(foreach i,trimmed untrimmed,$(subst mapped/short/,mapped/short-$i/,$(subst .fastq.gz,.bam,$(subst _R1_,_,$(call keep,_R1_,$(subst /trimmed/,/mapped/,${trimmed-libraries}))))))
 .PRECIOUS: ${mapped-reads}
 
 mapped-viral-reads = $(subst /mapped/,/viral-mapped/,${mapped-reads})
@@ -186,10 +187,20 @@ data/trimmed/long/%R2_001.fastq.gz: data/merged/%R1_001.fastq.gz data/merged/%R2
 ## Trim short RNA-seq libraries
 trim-short: ${short-trimmed-libraries}
 
+# Fragment layout for paired-end NEXTflex libraries:
+#
+#                    +-------------------- R1 --------------------->
+# +------------------|---------------------------------------------------------+
+# | 5ʹ adapter       |NNNN                              NNNN|       3ʹ adapter |
+# +---------------------------------------------------------|------------------+
+#             <------------------- R2 ----------------------+
+#
+# “NNNN”: degenerate index bases (4 nt)
+
 data/trimmed/short/%R1_001.fastq.gz: data/merged/%R1_001.fastq.gz data/merged/%R2_001.fastq.gz
 	@$(mkdir)
-	${bsub} -n3 "cutadapt -a NNNNTGGAATTCTCGGGTGCCAAGG -A NNNNGATCGTCGGACTGTAGAACTCTGAAC \
-		--minimum-length 10 \
+	${bsub} -n3 "cutadapt -a 'N{4}TGGAATTCTCGGGTGCCAAGG' -A 'N{4}GATCGTCGGACTGTAGAACTCTGAAC' \
+		--cut 4 --minimum-length 10 --overlap 10 --trim-n -q 20,20 \
 		-o '$@' -p '$(subst _R1_,_R2_,$@)' '$(firstword $+)' '$(lastword $+)' \
 		> '${@:.fastq.gz=.log}'"
 
@@ -246,18 +257,36 @@ data/mapped/long/%.bam: $$(call read-files,$$@) ${apis-viral-index}
 		--outFileNamePrefix '$(basename $@)'"
 	mv "$(basename $@)Aligned.sortedByCoord.out.bam" "$(basename $@).bam"
 
-data/mapped/short/%Aligned.sortedByCoord.out.bam: $$(call read-files,$$@) ${apis-viral-index}
+data/mapped/short-untrimmed/%Aligned.sortedByCoord.out.bam: $$(call untrimmed-read-files,$$@) ${viral-index}
+	@$(mkdir)
+	${bsub} -n 6 $(call mem,12000) \
+		"STAR --runThreadN 6 --genomeDir '$(dir $(lastword $^))' \
+		--runMode alignReads --alignEndsType Local \
+		--outFilterMatchNmin 18 \
+		--alignIntronMax 1 --scoreInsOpen -10000 --scoreDelOpen -10000 \
+		--outFilterScoreMinOverLread 0.2 --outFilterMatchNminOverLread 0.2 \
+		--outFilterMismatchNoverLmax 0.05 --outFilterMultimapNmax 10000 \
+		--readFilesIn $(call untrimmed-read-files,$@) --readFilesCommand 'gunzip -c' \
+		--outSAMtype BAM SortedByCoordinate --limitBAMsortRAM 4294967296 \
+		--outFileNamePrefix '${@D}/$(basename $*)'"
+
+data/mapped/short-trimmed/%Aligned.sortedByCoord.out.bam: $$(call read-files,$$@) ${apis-viral-index}
 	@$(mkdir)
 	${bsub} -n 12 $(call mem,24000) \
 		"STAR --runThreadN 12 --genomeDir '$(dir $(lastword $^))' \
-		--runMode alignReads --alignEndsType Local \
+		--runMode alignReads --alignEndsType EndToEnd \
 		--outFilterMatchNmin 18 \
+		--alignIntronMax 1 --scoreInsOpen -10000 --scoreDelOpen -10000 \
+		--outFilterScoreMinOverLread 0.1 --outFilterMatchNminOverLread 0.2 \
 		--outFilterMismatchNoverLmax 0.05 --outFilterMultimapNmax 10000 \
 		--readFilesIn $(call read-files,$@) --readFilesCommand 'gunzip -c' \
 		--outSAMtype BAM SortedByCoordinate --outSAMunmapped Within \
-		--outFileNamePrefix '$(basename $@)'"
+		--outFileNamePrefix '${@D}/$(basename $*)'"
 
-data/mapped/short/%.bam: data/mapped/short/%Aligned.sortedByCoord.out.bam
+data/mapped/short-untrimmed/%.bam: data/mapped/short-untrimmed/%Aligned.sortedByCoord.out.bam
+	${bsub} "./scripts/filter-short-reads '$<' '$@'"
+
+data/mapped/short-trimmed/%.bam: data/mapped/short-trimmed/%Aligned.sortedByCoord.out.bam
 	${bsub} "./scripts/filter-short-reads '$<' '$@'"
 
 .PHONY: map-untrimmed-reads-to-viral
@@ -375,6 +404,22 @@ data/unmapped/%_R1.fasta: data/mapped/%.bam
 	@$(mkdir)
 	${bsub} -n 2 $(call mem,2000) \
 		"./scripts/gather-unique-unmapped-reads '$<' '$@' '$(subst _R1,_R2,$@)'"
+
+short-read-frequencies = $(subst /trimmed/short/,/short-reads/,$(call filter_out,_R2,${short-trimmed-libraries:_R1_001.fastq.gz=-freq.tsv}))
+
+.PHONY: short-read-frequencies
+## Tabulate the read frequencies for the trimmed small RNA read libraries
+short-read-frequencies: ${short-read-frequencies}
+
+data/short-reads/%-freq.tsv: data/trimmed/short/%_R1_001.fastq.gz
+	@$(mkdir)
+	${bsub} \
+		"$$SHELL -c 'gunzip -c "'"$<"'" \
+		| awk "'"NR % 4 == 2"'" \
+		| sort \
+		| uniq -c \
+		| sort -nrk1 \
+		> "'"$@"'"'"
 
 #
 # Feature counts

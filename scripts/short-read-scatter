@@ -1,0 +1,43 @@
+sys = modules::import('klmr/sys')
+
+read_top_n_reads = function (file, n)
+    io$read_table(file, sep = '', nrows = n) %>%
+    setNames(c('Count', 'Read')) %>%
+    mutate(File = file)
+
+rows_list = function (data)
+    split(data, seq_len(nrow(data)))
+
+sys$run({
+    args = list(dir = 'data/short-reads')
+    io = modules::import('ebi-predocs/ebits/io')
+    modules::import_package('dplyr', attach = TRUE)
+    modules::import_package('tidyr', attach = TRUE)
+
+    files = dir(args$dir, full.names = TRUE)
+
+    top_reads = files %>%
+        lapply(read_top_n_reads, n = 200) %>%
+        bind_rows() %>%
+        extract(File, c('Medium', 'Lib'), '/(RJ|MJ3)-(\\d+)') %>%
+        arrange(Medium, Lib, Count) %>%
+        group_by(Medium, Lib) %>%
+        mutate(Rank = seq_len(n())) %>%
+        nest(Rank, Read) %>%
+        rows_list() %>%
+        {Reduce(function (x, y)
+            full_join(x, y$data[[1]], by = 'Read',
+                      suffix = c('.x', y$Medium)),
+                .[-1], .[[1]]$data[[1]])} %>%
+        mutate_at(vars(-Read), funs(ifelse(is.na(.), 0, .)))
+
+    modules::import_package('ggplot2', attach = TRUE)
+
+    theme_set(theme_minimal())
+
+    ggplot(top_reads) +
+        aes(Rank.x, RankMJ3) +
+        geom_point()
+})
+
+# vim: ft=r
