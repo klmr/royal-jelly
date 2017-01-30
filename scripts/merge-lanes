@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
-cat <(gunzip -c "$1") <(gunzip -c "$2") \
-| gzip -c \
-> "$3"
+args=("$@")
+output="${args[${#args[@]} - 1]}"
+unset "args[${#args[@]}-1]"
+cat "${args[@]}" > "$output"
