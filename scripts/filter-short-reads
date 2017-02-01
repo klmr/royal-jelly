@@ -7,5 +7,5 @@ output="$2"
     samtools view -H "$input";
     samtools view "$input" | awk '$9 >= 18 || $9 <= -18 {print}'
 ) \
-| samtools view -Sb \
+| samtools view -Sb - \
 > "$output"
