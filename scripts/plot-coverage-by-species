@@ -62,16 +62,13 @@ sys$run({
         group_by(Which, Species) %>%
         filter(any(Fraction >= 0.01)) %>%
         ggplot() +
-        aes(Species, Fraction,
-            color = Species == 'Apis mellifera',
-            fill = Species == 'Apis mellifera') +
-        geom_sparsebox(size = 1, width = 0.5) +
-        scale_color_manual(values = c('#404040', '#802020'), guide = FALSE) +
-        scale_fill_manual(values = c('#404040', '#802020'), guide = FALSE) +
-        labs(y = 'RNA fraction') +
+        aes(Species, Fraction, color = Which, fill = Which) +
+        geom_sparsebox(position = position_dodge(width = 0.5), size = 1, width = 0.5) +
+        scale_color_gray() +
+        scale_fill_gray() +
+        labs(y = 'RNA fraction', color = NULL, fill = NULL) +
         theme(axis.text.x = element_text(angle = 45, hjust = 1),
-              strip.background = element_rect(fill = 'gray', color = 'gray'),
-              panel.margin.x = unit(1, 'lines'))
+              strip.background = element_rect(fill = 'gray', color = 'gray'))
 
     ggsave('data/plots/per-species-coverage-all-boxplot.pdf')
 
