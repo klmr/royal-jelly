@@ -55,6 +55,7 @@ sys$run({
         ungroup()
 
     modules::import('klmr/ggplots', attach = TRUE)
+    theme_set(theme_publication)
 
     # Only plot libraries which contribute at least 1% of the coverage.
     species_coverage %>%
