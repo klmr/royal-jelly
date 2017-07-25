@@ -20,7 +20,7 @@ sys$run({
 
     design = io$read_table(args$design, header = TRUE) %>%
         filter(Lane == 1) %>%
-        select(Sample_ID, Description)
+        select(Sample_ID)
 
     viruses = io$read_table(args$viruses) %>%
         select(Species = 1, ID = 5)
@@ -42,14 +42,14 @@ sys$run({
         mutate(Which = ifelse(grepl('^MJ3', Library), 'MJ3', 'RJ'))
 
     species_coverage = coverage %>%
-        group_by(Library, Description, Which, Species) %>%
+        group_by(Library, Which, Species) %>%
         summarize(Count = sum(Count)) %>%
         mutate(Fraction = Count / sum(Count)) %>%
         ungroup()
 
     biotype_coverage = coverage %>%
         filter(Species == 'Apis mellifera') %>%
-        group_by(Library, Description, Species, Which, Biotype) %>%
+        group_by(Library, Species, Which, Biotype) %>%
         summarize(Count = sum(Count)) %>%
         mutate(Fraction = Count / sum(Count)) %>%
         ungroup()
@@ -60,14 +60,12 @@ sys$run({
     # Only plot libraries which contribute at least 1% of the coverage.
     species_coverage %>%
         group_by(Which, Species) %>%
-        mutate(Description = ifelse(Description == 'long', 'RNA-seq', 'small RNA-seq')) %>%
         filter(any(Fraction >= 0.01)) %>%
         ggplot() +
         aes(Species, Fraction,
             color = Species == 'Apis mellifera',
             fill = Species == 'Apis mellifera') +
         geom_sparsebox(size = 1, width = 0.5) +
-        facet_wrap(~ Description + Which) +
         scale_color_manual(values = c('#404040', '#802020'), guide = FALSE) +
         scale_fill_manual(values = c('#404040', '#802020'), guide = FALSE) +
         labs(y = 'RNA fraction') +
@@ -78,7 +76,6 @@ sys$run({
     ggsave('data/plots/per-species-coverage-all-boxplot.pdf')
 
     species_coverage %>%
-        filter(Description == 'long') %>%
         group_by(Which, Species) %>%
         filter(any(Fraction >= 0.01)) %>%
         ggplot() +
@@ -91,26 +88,9 @@ sys$run({
         theme(axis.text.x = element_text(angle = 45, hjust = 1),
               strip.text = element_text(size = 12))
 
-    ggsave('data/plots/per-species-coverage-long-boxplot.pdf')
-
-    species_coverage %>%
-        filter(Description == 'short') %>%
-        group_by(Which, Species) %>%
-        filter(any(Fraction >= 0.01)) %>%
-        ggplot() +
-        aes(Species, Count, color = Species == 'Apis mellifera',
-            fill = Species == 'Apis mellifera') +
-        geom_sparsebox(lwd = 1, size = 0.75) +
-        facet_wrap(~ Which) +
-        scale_color_manual(values = c('#404040', '#802020'), guide = FALSE) +
-        scale_fill_manual(values = c('#404040', '#802020'), guide = FALSE) +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1),
-              strip.text = element_text(size = 12))
-
-    ggsave('data/plots/per-species-coverage-short-boxplot.pdf')
+    ggsave('data/plots/per-species-coverage-boxplot.pdf')
 
     biotype_coverage %>%
-        filter(Description == 'long') %>%
         filter(Fraction >= 0.01) %>%
         ggplot() +
         aes(Biotype, Count) +
@@ -120,20 +100,7 @@ sys$run({
         theme(axis.text.x = element_text(angle = 45, hjust = 1),
               strip.text = element_text(size = 12))
 
-    ggsave('data/plots/per-biotype-coverage-long-boxplot.pdf')
-
-    biotype_coverage %>%
-        filter(Description == 'short') %>%
-        filter(Fraction >= 0.01) %>%
-        ggplot() +
-        aes(Biotype, Count) +
-        geom_boxplot(lwd = 1) +
-        scale_y_log10() +
-        facet_wrap(~ Which) +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1),
-              strip.text = element_text(size = 12))
-
-    ggsave('data/plots/per-biotype-coverage-short-boxplot.pdf')
+    ggsave('data/plots/per-biotype-coverage-boxplot.pdf')
 })
 
 # vim: ft=r
