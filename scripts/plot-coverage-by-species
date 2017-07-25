@@ -54,8 +54,7 @@ sys$run({
         mutate(Fraction = Count / sum(Count)) %>%
         ungroup()
 
-    modules::import_package('ggplot2', attach = TRUE)
-    theme_set(theme_minimal())
+    modules::import('klmr/ggplots', attach = TRUE)
 
     # Only plot libraries which contribute at least 1% of the coverage.
     species_coverage %>%
