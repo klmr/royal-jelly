@@ -123,8 +123,7 @@ sys$run({
         facet_grid(. ~ Biotype, switch = 'x', labeller = wrap_label(12)) +
         layout_mini_bars()
 
-
-    ggsave('data/plots/per-biotype-coverage-boxplot.pdf')
+    ggsave('data/plots/biotype-coverage-boxplot.pdf', width = 5, height = 5)
 })
 
 # vim: ft=r
