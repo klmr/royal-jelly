@@ -257,7 +257,7 @@ data/mapped/long/%.bam: $$(call read-files,$$@) ${apis-viral-index}
 		--outFileNamePrefix '$(basename $@)'"
 	mv "$(basename $@)Aligned.sortedByCoord.out.bam" "$(basename $@).bam"
 
-data/mapped/short-untrimmed/%Aligned.sortedByCoord.out.bam: $$(call untrimmed-read-files,$$@) ${viral-index}
+data/mapped/short-untrimmed/%Aligned.sortedByCoord.out.bam: $$(firstword $$(call untrimmed-read-files,$$@)) ${viral-index}
 	@$(mkdir)
 	${bsub} -n 6 $(call mem,12000) \
 		"STAR --runThreadN 6 --genomeDir '$(dir $(lastword $^))' \
@@ -270,7 +270,7 @@ data/mapped/short-untrimmed/%Aligned.sortedByCoord.out.bam: $$(call untrimmed-re
 		--outSAMtype BAM SortedByCoordinate --limitBAMsortRAM 4294967296 \
 		--outFileNamePrefix '${@D}/$(basename $*)'"
 
-data/mapped/short-trimmed/%Aligned.sortedByCoord.out.bam: $$(call read-files,$$@) ${apis-viral-index}
+data/mapped/short-trimmed/%Aligned.sortedByCoord.out.bam: $$(firstword $$(call read-files,$$@)) ${apis-viral-index}
 	@$(mkdir)
 	${bsub} -n 12 $(call mem,24000) \
 		"STAR --runThreadN 12 --genomeDir '$(dir $(lastword $^))' \
