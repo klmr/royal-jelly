@@ -367,7 +367,7 @@ data/qc/read-lengths/read-length-density.pdf: ${read-lengths}
 #
 
 data/mapped/%.bam.bai: data/mapped/%.bam
-	${bsub} "samtools index '$<'"
+	${bsub} $(call mem,1000) "samtools index '$<'"
 
 .PHONY: read-coverage
 ## Compute per-base read coverage over the bee/viral genomes
