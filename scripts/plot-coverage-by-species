@@ -7,12 +7,6 @@ args = list(coverage = 'data/quant/royal-jelly-counts.tsv',
 
 sys = modules::import('klmr/sys')
 
-geom_sparsebox = function (mapping = NULL, data = NULL, position = 'identity', size = 0.5, width = 0.75, lwd = 0.8)
-    list(stat_summary(aes(ymin = ..y.., ymax = ..y..), position = position,
-                      fun.y = mean, geom = 'errorbar', width = width, lwd = lwd),
-         geom_dotplot(mapping = mapping, data = data, position = position, binaxis = 'y',
-                      stackdir = 'center', dotsize = size, binwidth = 0.03))
-
 sys$run({
     io = modules::import('ebi-predocs/ebits/io')
 
