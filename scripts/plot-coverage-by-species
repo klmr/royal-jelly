@@ -72,21 +72,6 @@ sys$run({
 
     ggsave('data/plots/per-species-coverage-all-boxplot.pdf')
 
-    species_coverage %>%
-        group_by(Which, Species) %>%
-        filter(any(Fraction >= 0.01)) %>%
-        ggplot() +
-        aes(Species, Count, color = Species == 'Apis mellifera',
-            fill = Species == 'Apis mellifera') +
-        geom_sparsebox(lwd = 1, size = 0.75) +
-        facet_wrap(~ Which) +
-        scale_color_manual(values = c('#404040', '#802020'), guide = FALSE) +
-        scale_fill_manual(values = c('#404040', '#802020'), guide = FALSE) +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1),
-              strip.text = element_text(size = 12))
-
-    ggsave('data/plots/per-species-coverage-boxplot.pdf')
-
     biotype_coverage %>%
         filter(Fraction >= 0.01) %>%
         ggplot() +
