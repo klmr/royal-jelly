@@ -72,7 +72,8 @@ sys$run({
 
     biotype_coverage = coverage %>%
         filter(Species == 'Apis mellifera') %>%
-        group_by(Library, Species, Which, Biotype) %>%
+        select(-Species) %>%
+        group_by(Library, Which, Biotype) %>%
         summarize(Count = sum(Count)) %>%
         mutate(Fraction = Count / sum(Count)) %>%
         ungroup()
