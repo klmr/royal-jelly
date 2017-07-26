@@ -85,26 +85,33 @@ sys$run({
         function (x) mutate_all(x, funs(stringr::str_wrap(., n)))
     }
 
+    layout_mini_bars = function (...) {
+        list(
+             stat_summary(fun.y = mean, geom = 'bar'),
+             geom_dotplot(position = position_dodge(width = 0.5), width = 0.5,
+                          binaxis = 'y', binwidth = 0.05, stackdir = 'center',
+                          dotsize = 0.5, color = 'white'),
+             scale_y_continuous(labels = scales::percent),
+             scale_color_gray(),
+             scale_fill_gray(),
+             labs(y = 'RNA fraction', color = NULL, fill = NULL),
+             annotate('segment', x = -Inf, xend = Inf,
+                      y = -0.05, yend = -0.05, color = 'black', size = 0.5),
+             coord_cartesian(ylim = c(-0.01, 1)),
+             theme(axis.text.x = element_blank(),
+                   axis.title.x = element_blank(),
+                   strip.text.x = element_text(vjust = 1))
+         )
+    }
+
     # Only plot libraries which contribute at least 1% of the coverage.
     species_coverage %>%
         group_by(Which, Species) %>%
         filter(any(Fraction >= 0.01)) %>%
         ggplot() +
         aes(Which, Fraction, color = Which, fill = Which) +
-        stat_summary(fun.y = mean, geom = 'bar') +
-        geom_dotplot(position = position_dodge(width = 0.5), width = 0.5,
-                     binaxis = 'y', binwidth = 0.05, stackdir = 'center',
-                     dotsize = 0.5, color = 'white') +
-        scale_color_gray() +
-        scale_fill_gray() +
-        labs(y = 'RNA fraction', color = NULL, fill = NULL) +
-        annotate('segment', x = -Inf, xend = Inf,
-                 y = -0.05, yend = -0.05, color = 'black', size = 0.5) +
         facet_grid(. ~ Species, switch = 'x', labeller = wrap(15)) +
-        coord_cartesian(ylim = c(-0.01, 1)) +
-        theme(axis.text.x = element_blank(),
-              axis.title.x = element_blank(),
-              strip.text.x = element_text(vjust = 1))
+        layout_mini_bars()
 
     ggsave('data/plots/species-coverage-boxplot.pdf', width = 5, height = 5)
 
