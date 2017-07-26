@@ -2,7 +2,8 @@
 
 args = list(coverage = 'data/quant/royal-jelly-counts.tsv',
             design = 'raw/samples.csv',
-            viruses = 'supporting/bee-virus-list.csv')
+            viruses = 'supporting/bee-virus-list.csv',
+            total_mapped = 'data/quant/all-mapped-royal-jelly-counts.tsv')
 
 sys = modules::import('klmr/sys')
 
@@ -30,8 +31,14 @@ sys$run({
         mutate(Gene = sub('^gi\\|[^|]+\\|(ref|gb)\\|([^|]+)\\|$', '\\2', Gene),
                Biotype = gsub('_', '\u00AD', Biotype))
 
-    coverage = io$read_table(args$coverage, header = TRUE) %>%
+    total_mapped = io$read_table(args$total_mapped) %>%
+        select(Library = 1, Count = 2) %>%
+        mutate(Gene = NA_character_) %>%
+        select(Gene, Library, Count)
+
+    raw_coverage = io$read_table(args$coverage, header = TRUE) %>%
         tidyr$gather(Library, Count, -Gene) %>%
+        bind_rows(total_mapped) %>%
         mutate(Library = sub('_.*', '', Library) %>% gsub('-', '_', .)) %>%
         inner_join(design, by = c('Library' = 'Sample_ID')) %>%
         mutate(Gene = sub('^gi\\|[^|]+\\|(ref|gb)\\|([^|]+)\\|$', '\\2', Gene)) %>%
@@ -40,6 +47,22 @@ sys$run({
         mutate(Species = relevel(factor(Species), 'Apis mellifera')) %>%
         left_join(annotation, by = 'Gene') %>%
         mutate(Which = ifelse(grepl('^MJ3', Library), 'MRJP­3', 'royal jelly'))
+
+    sum_assigned_coverage = raw_coverage %>%
+        filter(! is.na(Gene), Species == 'Apis mellifera') %>%
+        group_by(Library) %>%
+        summarize(Count = sum(Count))
+
+    unassigned_coverage = raw_coverage %>%
+        filter(is.na(Gene)) %>%
+        inner_join(sum_assigned_coverage, by = 'Library') %>%
+        mutate(Count = Count.x - Count.y,
+               Biotype = 'other') %>%
+        select(!!! names(raw_coverage))
+
+    coverage = raw_coverage %>%
+        filter(! is.na(Gene)) %>%
+        bind_rows(unassigned_coverage)
 
     species_coverage = coverage %>%
         group_by(Library, Which, Species) %>%
