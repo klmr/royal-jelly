@@ -81,8 +81,8 @@ sys$run({
     modules::import('klmr/ggplots', attach = TRUE)
     theme_set(theme_publication())
 
-    wrap = function (x) {
-        mutate_all(x, funs(stringr::str_wrap(., 18)))
+    wrap = function (n) {
+        function (x) mutate_all(x, funs(stringr::str_wrap(., n)))
     }
 
     # Only plot libraries which contribute at least 1% of the coverage.
@@ -100,7 +100,7 @@ sys$run({
         labs(y = 'RNA fraction', color = NULL, fill = NULL) +
         annotate('segment', x = -Inf, xend = Inf,
                  y = -0.05, yend = -0.05, color = 'black', size = 0.5) +
-        facet_grid(. ~ Species, switch = 'x', labeller = wrap) +
+        facet_grid(. ~ Species, switch = 'x', labeller = wrap(15)) +
         coord_cartesian(ylim = c(-0.01, 1)) +
         theme(axis.text.x = element_blank(),
               axis.title.x = element_blank(),
