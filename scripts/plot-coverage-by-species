@@ -81,7 +81,7 @@ sys$run({
     modules::import('klmr/ggplots', attach = TRUE)
     theme_set(theme_publication())
 
-    wrap = function (n) {
+    wrap_label = function (n) {
         function (x) mutate_all(x, funs(stringr::str_wrap(., n)))
     }
 
@@ -110,7 +110,7 @@ sys$run({
         filter(any(Fraction >= 0.01)) %>%
         ggplot() +
         aes(Which, Fraction, color = Which, fill = Which) +
-        facet_grid(. ~ Species, switch = 'x', labeller = wrap(15)) +
+        facet_grid(. ~ Species, switch = 'x', labeller = wrap_label(15)) +
         layout_mini_bars()
 
     ggsave('data/plots/species-coverage-boxplot.pdf', width = 5, height = 5)
