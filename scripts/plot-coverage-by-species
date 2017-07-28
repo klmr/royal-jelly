@@ -109,9 +109,15 @@ sys$run({
 
     ggsave('data/plots/species-coverage-boxplot.pdf', width = 5, height = 5)
 
+    inverse_relevel = function (x, last) {
+        factor(x, levels = c(setdiff(levels(x), last), last))
+    }
+
     biotype_coverage %>%
         group_by(Biotype) %>%
         filter(any(Fraction >= 0.01)) %>%
+        ungroup() %>%
+        mutate(Biotype = inverse_relevel(reorder(Biotype, -Fraction), 'other')) %>%
         ggplot() +
         aes(Which, Fraction, color = Which, fill = Which) +
         facet_grid(. ~ Biotype, switch = 'x', labeller = wrap_label(12)) +
