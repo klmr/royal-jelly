@@ -35,7 +35,6 @@ sys$run({
     gr = modules::import_package('GenomicRanges')
 
     modules::import_package('dplyr', attach = TRUE)
-    modules::import_package('ggplot2', attach = TRUE)
 
     annotation = rtl$import(args$annotation)
 
@@ -55,15 +54,14 @@ sys$run({
     coverage_plus = varroa_coverage(rtl$import(args$plus))
     coverage_minus = varroa_coverage(rtl$import(args$minus))
 
-    theme_set(theme_minimal())
-
     tile_range = function (range, tiles)
         seq(range[1], range[2], length.out = tiles + 1)
 
     nice_ceiling = function (n, accuracy)
         ceiling(n / accuracy) * accuracy
 
-    modules::import_package('ggplot2', attach = TRUE)
+    modules::import('klmr/ggplots', attach = TRUE)
+    theme_set(theme_publication())
 
     ggplot(data) +
         aes(V2, ymin = 0, ymax = V3) +
