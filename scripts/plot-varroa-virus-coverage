@@ -79,6 +79,8 @@ sys$run({
         facet_grid(Library ~ ., scales = 'free_y') +
         xlab('VDV­1 genome position') +
         theme(axis.ticks.x = element_line())
+
+    ggsave(args$outfile, width = 6, height = 4)
 })
 
 # vim: ft=r
