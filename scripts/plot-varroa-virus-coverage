@@ -4,14 +4,28 @@ sys = modules::import('klmr/sys')
 
 sys$run({
     args = list(
-        plus = 'data/coverage/short/MJ3-13-19_S6_merged_001.bw',
-        minus = 'data/coverage/short/MJ3-13-19_S5_merged_001-minus.bw',
-        annotation = '../shared/annotation/Apis_mellifera.GCA_000002195.1-viruses/Apis_mellifera.GCA_000002195.1.32-viruses.gtf'
+        design = 'raw/samples.csv',
+        coverage_path = 'data/coverage/long',
+        annotation = '../shared/annotation/Apis_mellifera.GCA_000002195.1-viruses/Apis_mellifera.GCA_000002195.1.32-viruses.gtf',
+        outfile = 'data/coverage/long/vdv1-coverage.pdf'
     )
     rtl = modules::import_package('rtracklayer')
     gr = modules::import_package('GenomicRanges')
+    io = modules::import('ebi-predocs/ebits/io')
 
     modules::import_package('dplyr', attach = TRUE)
+    tidyr = modules::import_package('tidyr', attach = TRUE)
+
+    all_bw_files = dir(args$coverage_path, pattern = '\\.bw$', full.names = TRUE)
+
+    samples = io$read_table(args$design, header = TRUE) %>%
+        filter(Lane == 1) %>%
+        select(Sample_ID) %>%
+        rename(Library = Sample_ID) %>%
+        mutate(Library = gsub('_', '-', Library),
+               Which = ifelse(grepl('^MJ3', Library), 'MRJP­3', 'royal jelly'),
+               File = vapply(Library, grep, character(1), all_bw_files, value = TRUE)) %>%
+        mutate(Library = gsub('-', '­', Library))
 
     annotation = rtl$import(args$annotation)
 
@@ -28,8 +42,16 @@ sys$run({
         result
     }
 
-    coverage_plus = varroa_coverage(rtl$import(args$plus))
-    coverage_minus = varroa_coverage(rtl$import(args$minus))
+    modules::import('coverage_plot', attach = TRUE)
+
+    load_coverage = function (files) {
+        lapply(files, function (file) varroa_coverage(rtl$import(file)))
+    }
+
+    coverage = samples %>%
+        mutate(Coverage = load_coverage(File)) %>%
+        mutate(Coverage = lapply(Coverage, coverage_layout)) %>%
+        tidyr$unnest()
 
     tile_range = function (range, tiles)
         seq(range[1], range[2], length.out = tiles + 1)
@@ -37,16 +59,25 @@ sys$run({
     nice_ceiling = function (n, accuracy)
         ceiling(n / accuracy) * accuracy
 
-    modules::import('coverage_plot', attach = TRUE)
+    nice_floor = function (n, accuracy)
+        floor(n / accuracy) * accuracy
+
     modules::import('klmr/ggplots', attach = TRUE)
     theme_set(theme_publication())
 
-    max_coverage = max(coverage_plus$score)
+    y_extrema = function (range)
+        nice_floor(range[2], 1000)
 
-    ggcoverage(coverage_plus) +
+    type_colors = c(`MRJP­3` = '#7ba700', `royal jelly` = '#007ba7')
+
+    ggplot(coverage) +
+        aes(Position, Coverage, fill = Which) +
         geom_area() +
         scale_x_genomic(multiplier = 1e3) +
-        scale_y_continuous(labels = scales::comma, breaks = c(0, max_coverage)) +
+        scale_y_continuous(labels = scales::comma, breaks = y_extrema) +
+        scale_fill_manual(NULL, values = type_colors, guide = FALSE) +
+        facet_grid(Library ~ ., scales = 'free_y') +
+        xlab('VDV­1 genome position') +
         theme(axis.ticks.x = element_line())
 })
 
