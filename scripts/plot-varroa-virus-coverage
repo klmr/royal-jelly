@@ -53,11 +53,11 @@ sys$run({
         mutate(Coverage = lapply(Coverage, coverage_layout)) %>%
         tidyr$unnest()
 
-    nice_floor = function (n, accuracy)
-        floor(n / accuracy) * accuracy
-
     modules::import('klmr/ggplots', attach = TRUE)
     theme_set(theme_publication())
+
+    nice_floor = function (n, accuracy)
+        floor(n / accuracy) * accuracy
 
     y_extrema = function (range)
         nice_floor(range[2], 1000)
