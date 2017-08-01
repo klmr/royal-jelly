@@ -2,15 +2,10 @@
 
 args = list(coverage = 'data/quant/royal-jelly-counts.tsv',
             design = 'raw/samples.csv',
-            viruses = 'supporting/bee-virus-list.csv')
+            viruses = 'supporting/bee-virus-list.csv',
+            total_mapped = 'data/quant/all-mapped-royal-jelly-counts.tsv')
 
 sys = modules::import('klmr/sys')
-
-geom_sparsebox = function (mapping = NULL, data = NULL, position = 'identity', size = 0.5, width = 0.75, lwd = 0.8)
-    list(stat_summary(aes(ymin = ..y.., ymax = ..y..), position = position,
-                      fun.y = mean, geom = 'errorbar', width = width, lwd = lwd),
-         geom_dotplot(mapping = mapping, data = data, position = position, binaxis = 'y',
-                      stackdir = 'center', dotsize = size, binwidth = 0.03))
 
 sys$run({
     io = modules::import('ebi-predocs/ebits/io')
@@ -30,8 +25,14 @@ sys$run({
         mutate(Gene = sub('^gi\\|[^|]+\\|(ref|gb)\\|([^|]+)\\|$', '\\2', Gene),
                Biotype = gsub('_', '\u00AD', Biotype))
 
-    coverage = io$read_table(args$coverage, header = TRUE) %>%
+    total_mapped = io$read_table(args$total_mapped) %>%
+        select(Library = 1, Count = 2) %>%
+        mutate(Gene = NA_character_) %>%
+        select(Gene, Library, Count)
+
+    raw_coverage = io$read_table(args$coverage, header = TRUE) %>%
         tidyr$gather(Library, Count, -Gene) %>%
+        bind_rows(total_mapped) %>%
         mutate(Library = sub('_.*', '', Library) %>% gsub('-', '_', .)) %>%
         inner_join(design, by = c('Library' = 'Sample_ID')) %>%
         mutate(Gene = sub('^gi\\|[^|]+\\|(ref|gb)\\|([^|]+)\\|$', '\\2', Gene)) %>%
@@ -39,7 +40,23 @@ sys$run({
         mutate(Species = ifelse(is.na(Species), 'Apis mellifera', Species)) %>%
         mutate(Species = relevel(factor(Species), 'Apis mellifera')) %>%
         left_join(annotation, by = 'Gene') %>%
-        mutate(Which = ifelse(grepl('^MJ3', Library), 'MJ3', 'RJ'))
+        mutate(Which = ifelse(grepl('^MJ3', Library), 'MRJP­3', 'royal jelly'))
+
+    sum_assigned_coverage = raw_coverage %>%
+        filter(! is.na(Gene), Species == 'Apis mellifera') %>%
+        group_by(Library) %>%
+        summarize(Count = sum(Count))
+
+    unassigned_coverage = raw_coverage %>%
+        filter(is.na(Gene)) %>%
+        inner_join(sum_assigned_coverage, by = 'Library') %>%
+        mutate(Count = Count.x - Count.y,
+               Biotype = 'other') %>%
+        select(!!! names(raw_coverage))
+
+    coverage = raw_coverage %>%
+        filter(! is.na(Gene)) %>%
+        bind_rows(unassigned_coverage)
 
     species_coverage = coverage %>%
         group_by(Library, Which, Species) %>%
@@ -49,55 +66,64 @@ sys$run({
 
     biotype_coverage = coverage %>%
         filter(Species == 'Apis mellifera') %>%
-        group_by(Library, Species, Which, Biotype) %>%
+        select(-Species) %>%
+        group_by(Library, Which, Biotype) %>%
         summarize(Count = sum(Count)) %>%
         mutate(Fraction = Count / sum(Count)) %>%
         ungroup()
 
     modules::import('klmr/ggplots', attach = TRUE)
-    theme_set(theme_publication)
+    theme_set(theme_publication())
+
+    wrap_label = function (n) {
+        function (x) mutate_all(x, funs(stringr::str_wrap(., n)))
+    }
+
+    layout_mini_bars = function (...) {
+        list(
+             stat_summary(fun.y = mean, geom = 'bar'),
+             geom_dotplot(position = position_dodge(width = 0.5), width = 0.5,
+                          binaxis = 'y', binwidth = 0.05, stackdir = 'center',
+                          dotsize = 0.5, color = 'white'),
+             scale_y_continuous(labels = scales::percent),
+             scale_color_gray(),
+             scale_fill_gray(),
+             labs(y = 'RNA fraction', color = NULL, fill = NULL),
+             annotate('segment', x = -Inf, xend = Inf,
+                      y = -0.05, yend = -0.05, color = 'black', size = 0.5),
+             coord_cartesian(ylim = c(-0.01, 1)),
+             theme(axis.text.x = element_blank(),
+                   axis.title.x = element_blank(),
+                   strip.text.x = element_text(vjust = 1))
+         )
+    }
 
     # Only plot libraries which contribute at least 1% of the coverage.
     species_coverage %>%
         group_by(Which, Species) %>%
         filter(any(Fraction >= 0.01)) %>%
         ggplot() +
-        aes(Species, Fraction, color = Which, fill = Which) +
-        geom_sparsebox(position = position_dodge(width = 0.5), size = 1, width = 0.5) +
-        scale_color_gray() +
-        scale_fill_gray() +
-        labs(y = 'RNA fraction', color = NULL, fill = NULL) +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1),
-              strip.background = element_rect(fill = 'gray', color = 'gray'))
+        aes(Which, Fraction, color = Which, fill = Which) +
+        facet_grid(. ~ Species, switch = 'x', labeller = wrap_label(15)) +
+        layout_mini_bars()
 
-    ggsave('data/plots/per-species-coverage-all-boxplot.pdf')
+    ggsave('data/plots/species-coverage-boxplot.pdf', width = 5, height = 5, useDingbats = FALSE)
 
-    species_coverage %>%
-        group_by(Which, Species) %>%
-        filter(any(Fraction >= 0.01)) %>%
-        ggplot() +
-        aes(Species, Count, color = Species == 'Apis mellifera',
-            fill = Species == 'Apis mellifera') +
-        geom_sparsebox(lwd = 1, size = 0.75) +
-        facet_wrap(~ Which) +
-        scale_color_manual(values = c('#404040', '#802020'), guide = FALSE) +
-        scale_fill_manual(values = c('#404040', '#802020'), guide = FALSE) +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1),
-              strip.text = element_text(size = 12))
-
-    ggsave('data/plots/per-species-coverage-boxplot.pdf')
+    inverse_relevel = function (x, last) {
+        factor(x, levels = c(setdiff(levels(x), last), last))
+    }
 
     biotype_coverage %>%
-        filter(Fraction >= 0.01) %>%
+        group_by(Biotype) %>%
+        filter(any(Fraction >= 0.01)) %>%
+        ungroup() %>%
+        mutate(Biotype = inverse_relevel(reorder(Biotype, -Fraction), 'other')) %>%
         ggplot() +
-        aes(Biotype, Count) +
-        geom_boxplot(lwd = 1) +
-        scale_y_log10() +
-        facet_wrap(~ Which) +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1),
-              strip.text = element_text(size = 12))
+        aes(Which, Fraction, color = Which, fill = Which) +
+        facet_grid(. ~ Biotype, switch = 'x', labeller = wrap_label(12)) +
+        layout_mini_bars()
 
-    ggsave('data/plots/per-biotype-coverage-boxplot.pdf')
+    ggsave('data/plots/biotype-coverage-boxplot.pdf', width = 5, height = 5, useDingbats = FALSE)
 })
 
 # vim: ft=r
