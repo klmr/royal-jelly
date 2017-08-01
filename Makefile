@@ -437,6 +437,13 @@ data/quant/%.tsv: data/mapped/%.bam ${apis-viral-annotation}
 data/quant/royal-jelly-counts.tsv: ${feature-counts}
 	./scripts/merge-counts -o '$@' $+
 
+data/quant/all-mapped-royal-jelly-counts.tsv: ${mapped-reads} ${mapped-indexed-reads}
+	REGIONS=$$(cut -f1 ${apis-annotation} | sort -u | grep -v '^#'); \
+	for file in $(call filter_out,.bai,$^); do \
+		echo -n "$$(basename $$file)	"; \
+		samtools view -c -F4 $$file $$REGIONS; \
+	done > $@
+
 .DEFAULT_GOAL := show-help
 # See <https://gist.github.com/klmr/575726c7e05d8780505a> for explanation.
 .PHONY: show-help
