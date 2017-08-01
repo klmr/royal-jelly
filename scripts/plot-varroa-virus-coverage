@@ -66,7 +66,7 @@ sys$run({
 
     ggplot(coverage) +
         aes(Position, Coverage, fill = Which) +
-        geom_area() +
+        geom_ribbon(aes(ymax = Coverage), ymin = 0) +
         scale_x_genomic(multiplier = 1e3) +
         scale_y_continuous(labels = scales::comma, breaks = y_extrema) +
         scale_fill_manual(NULL, values = type_colors, guide = FALSE) +
