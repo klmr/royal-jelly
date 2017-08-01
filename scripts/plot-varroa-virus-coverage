@@ -2,29 +2,6 @@
 
 sys = modules::import('klmr/sys')
 
-zip = function (...)
-    as.vector(do.call(rbind, list(...)))
-
-zip_with = function (fun, ...)
-    do.call(mapply, c(list(fun), list(...)))
-
-#' Convert an Rle object to a ribbon surface
-#'
-#' @param rle the Rle object
-rle_to_surface = function (rle) {
-    modules::import_package('S4Vectors', attach = TRUE)
-    tibble(pos = zip(start(rle), end(rle)),
-           score = rep(runValue(rle), each = 2))
-}
-
-geom_coverage = function (mapping = NULL, data = NULL) {
-    surface = lapply(gr$coverage(data, weight = 'score'), rle_to_surface) %>%
-        Map(function (name, x) mutate(x, seqname = name), names(.), .) %>%
-        bind_rows()
-
-    geom_ribbon(aes(x = pos, ymax = score), data = surface, ymin = 0)
-}
-
 sys$run({
     args = list(
         plus = 'data/coverage/short/MJ3-13-19_S6_merged_001.bw',
@@ -60,16 +37,17 @@ sys$run({
     nice_ceiling = function (n, accuracy)
         ceiling(n / accuracy) * accuracy
 
+    modules::import('coverage_plot', attach = TRUE)
     modules::import('klmr/ggplots', attach = TRUE)
     theme_set(theme_publication())
 
-    ggplot(data) +
-        aes(V2, ymin = 0, ymax = V3) +
-        geom_ribbon() +
-        labs(x = 'Position (bp)', y = 'Coverage') +
-        scale_x_continuous(breaks = round(tile_range(range(data$V2), 10)),
-                           limits = c(1, nice_ceiling(max(data$V2), 100)),
-                           expand = c(0, 0))
+    max_coverage = max(coverage_plus$score)
+
+    ggcoverage(coverage_plus) +
+        geom_area() +
+        scale_x_genomic(multiplier = 1e3) +
+        scale_y_continuous(labels = scales::comma, breaks = c(0, max_coverage)) +
+        theme(axis.ticks.x = element_line())
 })
 
 # vim: ft=r
