@@ -53,12 +53,6 @@ sys$run({
         mutate(Coverage = lapply(Coverage, coverage_layout)) %>%
         tidyr$unnest()
 
-    tile_range = function (range, tiles)
-        seq(range[1], range[2], length.out = tiles + 1)
-
-    nice_ceiling = function (n, accuracy)
-        ceiling(n / accuracy) * accuracy
-
     nice_floor = function (n, accuracy)
         floor(n / accuracy) * accuracy
 
