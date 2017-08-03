@@ -4,6 +4,7 @@ include bsub.make
 
 $(call dirs,data data/mirna data/mirna/reference data/mirna/reference/index data/mirna/mapped data/mirna/bee-reads data/mirna/summary)
 
+apis-annotation = ../shared/annotation/apis_mellifera/Apis_mellifera.GCA_000002195.1.32.gtf
 hairpin = data/mirna/reference/hairpin.fasta
 hairpin-index = $(dir ${hairpin})index
 raw-mapped = $(shell find data/mapped/long -name \*.bam)
@@ -47,7 +48,7 @@ data/mirna/bee-reads/%.fastq.gz: data/mapped/long/%.bam | data/mirna/bee-reads
 
 data/mirna/mapped/%.Aligned.sortedByCoord.out.bam: data/mirna/bee-reads/%.fastq.gz ${hairpin-index} | data/mirna/mapped
 	${bsub} -n8 $(call memreq,16000) \
-		"STAR --runThreadN 6 --genomeDir $(lastword $^) \
+		"STAR --runThreadN 4 --genomeDir $(lastword $^) \
 		--outFilterMismatchNoverLmax 0.15 --outFilterMismatchNmax 1 \
 		--alignIntronMax 1 \
 		--scoreDelOpen -10000 --scoreInsOpen -10000 \
