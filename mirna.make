@@ -49,6 +49,10 @@ data/mirna/mapped/%.Aligned.sortedByCoord.out.bam: data/mirna/bee-reads/%.fastq.
 		--outFileNamePrefix ${@:Aligned.sortedByCoord.out.bam=}"
 
 data/mirna/summary/%.txt: data/mirna/mapped/%.Aligned.sortedByCoord.out.bam | data/mirna/summary
-	samtools view $< | cut -f 3 | sort | uniq -c | sort -rnk1 > $@
+	samtools view $< \
+	| perl -paE '@F[5] =~ /(\d+)(?=M)/; $$t = $$1 > 25 ? "pre" : "mature"; say "@F[2]\t$$t"; $$_ = ""' \
+	| sort \
+	| uniq -c \
+	| sort -rnk1 > $@
 
 # vim: ft=make
