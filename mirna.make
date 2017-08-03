@@ -10,6 +10,10 @@ raw-mapped = $(shell find data/mapped/long -name \*.bam)
 reads = $(subst /mapped/long/,/mirna/bee-reads/,${raw-mapped:.bam=.fastq.gz})
 mapped = $(subst /bee-reads/,/mapped/,${reads:.fastq.gz=.Aligned.sortedByCoord.out.bam})
 summary = $(subst /mapped/,/summary/,${mapped:.Aligned.sortedByCoord.out.bam=.txt})
+plot = ${summary:.txt=.pdf}
+
+.DELETE_ON_ERROR:
+.PRECIOUS: ${hairpin-index} ${raw-mapped} ${reads} ${mapped} ${summary}
 
 ## Download hairpin miRNA reference.
 hairpin: ${hairpin}
@@ -22,6 +26,10 @@ hairpin-index: ${hairpin-index}/Genome
 ## Generate the summary of found miRNAs.
 summary: ${summary}
 .PHONY: summary
+
+## Plot miRNA summaries.
+plot: ${plot}
+.PHONY: plot
 
 ${hairpin}: | data/mirna/reference
 	wget ftp://mirbase.org/pub/mirbase/CURRENT/hairpin.fa.gz -O $@.gz
@@ -54,5 +62,8 @@ data/mirna/summary/%.txt: data/mirna/mapped/%.Aligned.sortedByCoord.out.bam | da
 	| sort \
 	| uniq -c \
 	| sort -rnk1 > $@
+
+data/mirna/summary/%.pdf: data/mirna/summary/%.txt
+	./scripts/plot-mirna-barplot $< $@
 
 # vim: ft=make
