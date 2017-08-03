@@ -1,0 +1,46 @@
+#!/usr/bin/env Rscript
+
+sys = modules::import('klmr/sys')
+
+sys$run({
+    modules::import_package('dplyr', attach = TRUE)
+    modules::import('klmr/ggplots', attach = TRUE)
+
+    args = sys$cmd$parse(arg('infile', 'summary input file (.txt)'),
+                         arg('outfile', 'plot output file'))
+
+    mirna = read.table(args$infile,
+                       col.names = c('Count', 'miRNA', 'Type')) %>%
+        mutate(miRNA = gsub('-', '­', miRNA)) %>%
+        mutate(miRNA = factor(miRNA, c(unique(miRNA), 'other'))) %>%
+        mutate(miRNA = reorder(miRNA, -Count),
+               Type = ifelse(Type == 'mature', 'mature', 'pre­miRNA'))
+
+    singletons = filter(mirna, Count == 1) %>%
+        group_by(Type) %>%
+        summarize(miRNA = factor('other', levels(miRNA)), Count = sum(Count)) %>%
+        select(Count, miRNA, Type)
+
+    mirna = mirna %>%
+        filter(Count > 1) %>%
+        bind_rows(singletons)
+
+    theme_set(theme_publication())
+
+    p = filter(mirna, Count > 1) %>%
+        ggplot() +
+        aes(miRNA, Count, fill = Type) +
+        geom_bar(stat = 'identity', position = 'stack') +
+        geom_text(aes(label = Count, color = Type), vjust = 2, size = 3,
+                  position = 'stack') +
+        scale_y_log10() +
+        scale_fill_gray() +
+        scale_color_manual(values = c(`pre­miRNA` = 'black', mature = 'white'), guide = 'none') +
+        xlab('') +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1),
+              legend.position = 'bottom')
+
+    ggsave(args$outfile, p, width = 10, height = 6)
+})
+
+# vim: ft=r
