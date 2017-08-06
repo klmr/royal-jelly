@@ -1,0 +1,56 @@
+#!/usr/bin/env Rscript
+
+sys = modules::import('klmr/sys')
+
+sys$run({
+    args = sys$cmd$parse(arg('samples', 'the samples spreadsheet'),
+                         arg('dir', 'insert size data directory'),
+                         arg('outfile', 'the plot output filename'))
+
+    modules::import_package('dplyr', attach = TRUE)
+    modules::import_package('tidyr', attach = TRUE)
+    io = modules::import('ebi-predocs/ebits/io')
+
+    files = dir(args$dir, '\\.tsv$', full.names = TRUE)
+
+    samples = io$read_table(args$samples, header = TRUE) %>%
+        filter(Lane == 1) %>%
+        select(Library = Sample_ID) %>%
+        mutate(Library = gsub('_', '-', Library),
+               Type = ifelse(grepl('^MJ3', Library), 'MRJP­3', 'royal jelly'),
+               File = vapply(Library, grep, character(1), files, value = TRUE))
+
+    data = samples %>%
+        mutate(Data = lapply(File, readr::read_tsv, skip = 10)) %>%
+        unnest(Data) %>%
+        rename(`Insert size` = insert_size, Count = All_Reads.fr_count) %>%
+        group_by(File) %>%
+        mutate(Frequency = Count / sum(Count)) %>%
+        ungroup() %>%
+        select(-File)
+
+    sum_counts = data %>%
+        group_by(Type, `Insert size`) %>%
+        summarize(Min = min(Frequency), Max = max(Frequency), Frequency = mean(Frequency))
+
+    type_colors = c(`MRJP­3` = '#7ba700', `royal jelly` = '#007ba7')
+
+    modules::import('klmr/ggplots', attach = TRUE)
+    modules::import('./coverage_plot', attach = TRUE)
+    theme_set(theme_publication())
+
+    p = sum_counts %>%
+        mutate_at(vars(Frequency, Min, Max), funs(runmed(., 5))) %>%
+        ggplot() +
+        aes(`Insert size`, Frequency, ymin = Min, ymax = Max, color = Type) +
+        geom_line() +
+        geom_ribbon(aes(fill = Type), color = NA, alpha = 0.5) +
+        scale_x_genomic(multiplier = 1, unit = 'nt') +
+        scale_color_manual('', values = type_colors) +
+        scale_fill_manual('', values = type_colors) +
+        theme(legend.position = c(0.8, 0.8))
+
+    ggsave(args$outfile, p, width = 8, height = 4)
+})
+
+# vim: ft=r
