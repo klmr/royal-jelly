@@ -33,15 +33,18 @@ case_of = function (x, ...) {
 #' determines which unit prefix to use (\code{bp}, \code{kb}, \code{Mb} or
 #' \code{Gb}). Defaults to 1e6 (\code{Gb}).
 #' @param ... remaining arguments, forwarded to \code{scale_x_continuous}.
-scale_x_genomic = function (multiplier = 1e6, ...) {
-    unit = case_of(multiplier,
+scale_x_genomic = function (multiplier = 1e6, unit, ...) {
+    disp_unit = case_of(multiplier,
         1 ~ 'bp',
         1e3 ~ 'kb',
         1e6 ~ 'Mb',
         1e9 ~ 'Gb',
         stop('Invalid multiplier (not one of 1, 1e3, 1e6 or 1e9)'))
 
-    labeller = function (x) sprintf('%s %s', x / multiplier, unit)
+    if (! missing(unit))
+        disp_unit = unit
+
+    labeller = function (x) sprintf('%s %s', x / multiplier, disp_unit)
     ggplot2::scale_x_continuous(labels = labeller, ...)
 }
 
