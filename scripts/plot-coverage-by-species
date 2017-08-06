@@ -83,7 +83,7 @@ sys$run({
 
     layout_mini_bars = function (...) {
         list(
-             stat_summary(fun.y = mean, geom = 'bar'),
+             stat_summary(fun.y = mean, geom = 'bar', color = NA, alpha = 0.5),
              geom_dotplot(position = position_dodge(width = 0.5), width = 0.5,
                           binaxis = 'y', binwidth = 0.05, stackdir = 'center',
                           dotsize = 0.5, color = 'white'),
