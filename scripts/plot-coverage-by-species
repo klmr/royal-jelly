@@ -104,6 +104,8 @@ sys$run({
     species_coverage %>%
         group_by(Which, Species) %>%
         filter(any(Fraction >= 0.01)) %>%
+        ungroup() %>%
+        mutate(Species = relevel(reorder(Species, -Fraction), 'Apis mellifera')) %>%
         ggplot() +
         aes(Which, Fraction, color = Which, fill = Which) +
         facet_grid(. ~ Species, switch = 'x', labeller = wrap_label(15)) +
