@@ -4,39 +4,88 @@ sys = modules::import('klmr/sys')
 
 sys$run({
     modules::import_package('dplyr', attach = TRUE)
-    modules::import('klmr/ggplots', attach = TRUE)
+    modules::import_package('tidyr', attach = TRUE)
+    io = modules::import('ebi-predocs/ebits/io')
 
-    args = sys$cmd$parse(arg('infile', 'summary input file (.txt)'),
-                         arg('outfile', 'plot output file'))
+    args = sys$cmd$parse(arg('samples', 'the samples spreadsheet'),
+                         arg('dir', 'miRNA summary data directory'),
+                         arg('outfile', 'the plot output filename'))
 
-    mirna = read.table(args$infile,
-                       col.names = c('Count', 'miRNA', 'Type')) %>%
+    files = dir(args$dir, '\\.txt$', full.names = TRUE)
+
+    samples = io$read_table(args$samples, header = TRUE) %>%
+        filter(Lane == 1) %>%
+        select(Library = Sample_ID) %>%
+        mutate(Library = gsub('_', '-', Library),
+               Type = ifelse(grepl('^MJ3', Library), 'MRJP­3', 'royal jelly'),
+               File = vapply(Library, grep, character(1), files, value = TRUE))
+
+    mirna = samples %>%
+        mutate(Data = lapply(File, io$read_table, sep = '',
+                             col.names = c('Count', 'miRNA', 'Stage'))) %>%
+        unnest(Data) %>%
+        select(-File) %>%
         mutate(miRNA = gsub('-', '­', miRNA)) %>%
         mutate(miRNA = factor(miRNA, c(unique(miRNA), 'other'))) %>%
         mutate(miRNA = reorder(miRNA, -Count),
-               Type = ifelse(Type == 'mature', 'mature', 'pre­miRNA'))
+               Stage = ifelse(Stage == 'mature', 'mature', 'pre­miRNA'))
 
-    singletons = filter(mirna, Count == 1) %>%
-        group_by(Type) %>%
+    singletons = mirna %>%
+        filter(Count == 1) %>%
+        group_by(Library, Type, Stage) %>%
         summarize(miRNA = factor('other', levels(miRNA)), Count = sum(Count)) %>%
-        select(Count, miRNA, Type)
+        ungroup() %>%
+        select(Library, Type, Count, miRNA, Stage)
 
-    mirna = mirna %>%
+    mirna_groups = mirna %>%
         filter(Count > 1) %>%
-        bind_rows(singletons)
+        bind_rows(singletons) %>%
+        group_by(Library) %>%
+        mutate(MiCount = n()) %>%
+        with(split(., MiCount > 5))
 
+    modules::import('klmr/ggplots', attach = TRUE)
     theme_set(theme_publication())
 
-    p = filter(mirna, Count > 1) %>%
+    type_colors = c(`MRJP­3, mature` = '#7ba700',
+                    `royal jelly, mature` = '#007ba7',
+                    `MRJP­3, pre­miRNA` = '#AFCB7F',
+                    `royal jelly, pre­miRNA` = '#71AFC9')
+
+    p = mirna_groups$`FALSE` %>%
+        filter(miRNA != 'other') %>%
         ggplot() +
-        aes(miRNA, Count, fill = Type) +
+        aes(miRNA, Count, fill = paste(Type, Stage, sep = ', ')) +
         geom_bar(stat = 'identity', position = 'stack') +
-        geom_text(aes(label = Count, color = Type), vjust = 2, size = 3,
+        geom_text(aes(label = Count, color = Stage), vjust = 2, size = 3,
                   position = 'stack') +
         scale_y_log10() +
-        scale_fill_gray() +
+        scale_fill_manual(values = type_colors) +
         scale_color_manual(values = c(`pre­miRNA` = 'black', mature = 'white'), guide = 'none') +
-        xlab('') +
+        labs(x = '', fill = '') +
+        facet_wrap(~ Library, 2, 2, scales = 'free') +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1),
+              legend.position = 'bottom')
+
+    ggsave(args$outfile, p, width = 10, height = 6)
+
+    inverse_relevel = function (x, last) {
+        factor(x, levels = c(setdiff(levels(x), last), last))
+    }
+
+    rj_stage_colors = c(mature = '#007ba7', `pre­miRNA` = '#71AFC9')
+
+    p = mirna_groups$`TRUE` %>%
+        mutate(miRNA = inverse_relevel(reorder(miRNA, -Count), 'other')) %>%
+        ggplot() +
+        aes(miRNA, Count, fill = Stage) +
+        geom_bar(stat = 'identity', position = 'stack') +
+        geom_text(aes(label = Count, color = Stage), vjust = 2, size = 3,
+                  position = 'stack') +
+        scale_y_log10() +
+        scale_fill_manual(values = rj_stage_colors) +
+        scale_color_manual(values = c(`pre­miRNA` = 'black', mature = 'white'), guide = 'none') +
+        labs(x = '', fill = '') +
         theme(axis.text.x = element_text(angle = 45, hjust = 1),
               legend.position = 'bottom')
 
