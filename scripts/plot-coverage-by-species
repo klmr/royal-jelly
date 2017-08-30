@@ -3,7 +3,8 @@
 args = list(coverage = 'data/quant/royal-jelly-counts.tsv',
             design = 'raw/samples.csv',
             viruses = 'supporting/bee-virus-list.csv',
-            total_mapped = 'data/quant/all-mapped-royal-jelly-counts.tsv')
+            total_mapped = 'data/quant/all-mapped-royal-jelly-counts.tsv',
+            mirna_mapped = 'data/mirna/summary/all-counts.tsv')
 
 sys = modules::import('klmr/sys')
 
@@ -23,16 +24,23 @@ sys$run({
     annotation = io$read_table('raw/apis-viruses.annotation.tsv') %>%
         select(Gene = 1, Biotype = 2) %>%
         mutate(Gene = sub('^gi\\|[^|]+\\|(ref|gb)\\|([^|]+)\\|$', '\\2', Gene),
-               Biotype = gsub('_', '\u00AD', Biotype))
+               Biotype = gsub('_', '\u00AD', Biotype)) %>%
+        add_row(Gene = 'microRNA gene', Biotype = 'microRNA')
 
     total_mapped = io$read_table(args$total_mapped) %>%
         select(Library = 1, Count = 2) %>%
         mutate(Gene = NA_character_) %>%
         select(Gene, Library, Count)
 
+    mirna_coverage = io$read_table(args$mirna_mapped, header = FALSE) %>%
+        select(Library = 1, Count = 2) %>%
+        mutate(Gene = 'microRNA gene') %>%
+        select(Gene, Library, Count)
+
     raw_coverage = io$read_table(args$coverage, header = TRUE) %>%
         tidyr$gather(Library, Count, -Gene) %>%
         bind_rows(total_mapped) %>%
+        bind_rows(mirna_coverage) %>%
         mutate(Library = sub('_.*', '', Library) %>% gsub('-', '_', .)) %>%
         inner_join(design, by = c('Library' = 'Sample_ID')) %>%
         mutate(Gene = sub('^gi\\|[^|]+\\|(ref|gb)\\|([^|]+)\\|$', '\\2', Gene)) %>%
@@ -117,7 +125,7 @@ sys$run({
 
     biotype_coverage %>%
         group_by(Biotype) %>%
-        filter(any(Fraction >= 0.01)) %>%
+        filter(any(Fraction >= 0.001)) %>%
         ungroup() %>%
         mutate(Biotype = inverse_relevel(reorder(Biotype, -Fraction), 'other')) %>%
         ggplot() +
