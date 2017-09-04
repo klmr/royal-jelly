@@ -67,4 +67,11 @@ data/mirna/summary/%.txt: data/mirna/mapped/%.Aligned.sortedByCoord.out.bam | da
 data/mirna/summary/%.pdf: data/mirna/summary/%.txt
 	./scripts/plot-mirna-barplot $< $@
 
+data/mirna/summary/all-counts.tsv: ${mapped}
+	for file in ${mapped:.Aligned.sortedByCoord.out.bam=.Log.final.out}; do \
+		echo -n "$$(basename $${file%%_merged_001.Log.final.out})"$$'\t'; \
+		grep 'mapped reads number\|Number of reads mapped to multiple' $$file | \
+			cut -d '|' -f 2 | awk '{n += $$1} END {print n}'; \
+	done > $@
+
 # vim: ft=make

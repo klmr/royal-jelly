@@ -20,7 +20,7 @@ sys$run({
     viruses = io$read_table(args$viruses) %>%
         select(Species = 1, ID = 5)
 
-    annotation = io$read_table('data/apis-viruses.annotation.tsv') %>%
+    annotation = io$read_table('raw/apis-viruses.annotation.tsv') %>%
         select(Gene = 1, Biotype = 2) %>%
         mutate(Gene = sub('^gi\\|[^|]+\\|(ref|gb)\\|([^|]+)\\|$', '\\2', Gene),
                Biotype = gsub('_', '\u00AD', Biotype))
