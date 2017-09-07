@@ -79,6 +79,43 @@ sys$run({
         summarize(Count = sum(Count)) %>%
         ungroup()
 
+    # Calcuate size factors based on protein-coding genes only.
+    size_factors = coverage %>%
+        filter(Species == 'Apis mellifera',
+               Biotype == 'protein\u00ADcoding') %>%
+        group_by(Biotype) %>%
+        mutate(LogGeometricMean = sum(log(Count[Count > 0])) / n()) %>%
+        ungroup() %>%
+        mutate(LogRatio = log(Count) - LogGeometricMean) %>%
+        group_by(Library) %>%
+        filter(is.finite(LogGeometricMean), Count > 0) %>%
+        summarize(SizeFactor = exp(median(LogRatio)))
+
+    size_factors
+
+    # Well. Hum. These are *hugely* different, and also don’t correlate with the
+    # raw read counts per library:
+
+    read_counts_per_library = coverage %>%
+        filter(Species == 'Apis mellifera',
+               Biotype == 'protein\u00ADcoding') %>%
+        group_by(Library) %>%
+        summarize(Count = sum(Count)) %>%
+        mutate(SizeFactor = Count / mean(Count)) %>%
+        select(-Count)
+
+    inner_join(size_factors, read_counts_per_library, by = 'Library') %>%
+        with(cor(SizeFactor.x, SizeFactor.y, method = 'spearman'))
+
+    # Yeah … so we’ll instead use the read counts per library as a normalisation
+    # factor instead.
+
+    size_factors = read_counts_per_library
+
+    normalized_biotype_coverage =
+        inner_join(biotype_coverage, size_factors, by = 'Library') %>%
+        mutate(Count = Count / SizeFactor)
+
     modules::import('klmr/ggplots', attach = TRUE)
     theme_set(theme_publication())
 
@@ -122,7 +159,9 @@ sys$run({
         factor(x, levels = c(setdiff(levels(x), last), last))
     }
 
-    filtered_biotype_coverage = biotype_coverage %>%
+    filtered_biotype_coverage = normalized_biotype_coverage %>%
+        group_by(Library) %>%
+        mutate(Fraction = Count / sum(Count)) %>%
         group_by(Biotype) %>%
         filter(any(Fraction >= 0.001)) %>%
         ungroup() %>%
