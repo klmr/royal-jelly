@@ -77,7 +77,6 @@ sys$run({
         select(-Species) %>%
         group_by(Library, Which, Biotype) %>%
         summarize(Count = sum(Count)) %>%
-        mutate(Fraction = Count / sum(Count)) %>%
         ungroup()
 
     modules::import('klmr/ggplots', attach = TRUE)
@@ -123,17 +122,41 @@ sys$run({
         factor(x, levels = c(setdiff(levels(x), last), last))
     }
 
-    biotype_coverage %>%
+    filtered_biotype_coverage = biotype_coverage %>%
         group_by(Biotype) %>%
         filter(any(Fraction >= 0.001)) %>%
         ungroup() %>%
-        mutate(Biotype = inverse_relevel(reorder(Biotype, -Fraction), 'other')) %>%
-        ggplot() +
-        aes(Which, Fraction, color = Which, fill = Which) +
-        facet_grid(. ~ Biotype, switch = 'x', labeller = wrap_label(12)) +
-        layout_mini_bars()
+        mutate(Biotype = inverse_relevel(reorder(Biotype, -Fraction), 'other'))
 
-    ggsave('data/plots/biotype-coverage-boxplot.pdf', width = 5, height = 5, useDingbats = FALSE)
+    mean_biotype_coverage = filtered_biotype_coverage %>%
+        group_by(Which, Biotype) %>%
+        summarize(Count = mean(Count)) %>%
+        ungroup()
+
+    powers = function (x, base = 10) {
+        lapply(x, function (x) bquote(.(base) ^ .(log(x) / log(base))))
+    }
+
+    ggplot() +
+        aes(Which, Count, color = Which, fill = Which) +
+        geom_col(data = mean_biotype_coverage) +
+        geom_dotplot(data = filtered_biotype_coverage,
+                     position = position_dodge(width = 0.5), width = 0.5,
+                     binaxis = 'y', binwidth = 0.3, stackdir = 'center',
+                     dotsize = 0.5, color = 'white') +
+        facet_grid(. ~ Biotype, switch = 'x', labeller = wrap_label(12)) +
+        scale_y_log10(breaks = 10 ^ seq(0, 6), labels = powers) +
+        scale_color_manual(values = type_colors) +
+        scale_fill_manual(values = type_colors) +
+        labs(y = 'RNA counts', color = NULL, fill = NULL) +
+        annotate('segment', x = -Inf, xend = Inf,
+                 y = 0.5, yend = 0.5, color = 'black', size = 0.5) +
+        coord_cartesian(expand = FALSE) +
+        theme(axis.text.x = element_blank(),
+              axis.title.x = element_blank(),
+              strip.text.x = element_text(vjust = 1))
+
+    ggsave('data/plots/biotype-coverage-boxplot.pdf', width = 9, height = 5, useDingbats = FALSE)
 })
 
 # vim: ft=r
