@@ -254,6 +254,7 @@ data/mapped/long/%.bam: $$(call read-files,$$@) ${apis-viral-index}
 		--outFilterMismatchNoverLmax 0.15 --outFilterMultimapNmax 10 \
 		--readFilesIn $(call read-files,$@) --readFilesCommand 'gunzip -c' \
 		--outSAMtype BAM SortedByCoordinate --outSAMunmapped Within \
+		--outReadsUnmapped Fastx \
 		--outFileNamePrefix '$(basename $@)'"
 	mv "$(basename $@)Aligned.sortedByCoord.out.bam" "$(basename $@).bam"
 
