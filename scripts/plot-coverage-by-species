@@ -3,7 +3,8 @@
 args = list(coverage = 'data/quant/royal-jelly-counts.tsv',
             design = 'raw/samples.csv',
             viruses = 'supporting/bee-virus-list.csv',
-            total_mapped = 'data/quant/all-mapped-royal-jelly-counts.tsv')
+            total_mapped = 'data/quant/all-mapped-royal-jelly-counts.tsv',
+            mirna_mapped = 'data/mirna/summary/all-counts.tsv')
 
 sys = modules::import('klmr/sys')
 
@@ -23,16 +24,23 @@ sys$run({
     annotation = io$read_table('raw/apis-viruses.annotation.tsv') %>%
         select(Gene = 1, Biotype = 2) %>%
         mutate(Gene = sub('^gi\\|[^|]+\\|(ref|gb)\\|([^|]+)\\|$', '\\2', Gene),
-               Biotype = gsub('_', '\u00AD', Biotype))
+               Biotype = gsub('_', '\u00AD', Biotype)) %>%
+        add_row(Gene = 'microRNA gene', Biotype = 'miRNA')
 
     total_mapped = io$read_table(args$total_mapped) %>%
         select(Library = 1, Count = 2) %>%
         mutate(Gene = NA_character_) %>%
         select(Gene, Library, Count)
 
+    mirna_coverage = io$read_table(args$mirna_mapped, header = FALSE) %>%
+        select(Library = 1, Count = 2) %>%
+        mutate(Gene = 'microRNA gene') %>%
+        select(Gene, Library, Count)
+
     raw_coverage = io$read_table(args$coverage, header = TRUE) %>%
         tidyr$gather(Library, Count, -Gene) %>%
         bind_rows(total_mapped) %>%
+        bind_rows(mirna_coverage) %>%
         mutate(Library = sub('_.*', '', Library) %>% gsub('-', '_', .)) %>%
         inner_join(design, by = c('Library' = 'Sample_ID')) %>%
         mutate(Gene = sub('^gi\\|[^|]+\\|(ref|gb)\\|([^|]+)\\|$', '\\2', Gene)) %>%
@@ -69,8 +77,44 @@ sys$run({
         select(-Species) %>%
         group_by(Library, Which, Biotype) %>%
         summarize(Count = sum(Count)) %>%
-        mutate(Fraction = Count / sum(Count)) %>%
         ungroup()
+
+    # Calcuate size factors based on protein-coding genes only.
+    size_factors = coverage %>%
+        filter(Species == 'Apis mellifera',
+               Biotype == 'protein\u00ADcoding') %>%
+        group_by(Biotype) %>%
+        mutate(LogGeometricMean = sum(log(Count[Count > 0])) / n()) %>%
+        ungroup() %>%
+        mutate(LogRatio = log(Count) - LogGeometricMean) %>%
+        group_by(Library) %>%
+        filter(is.finite(LogGeometricMean), Count > 0) %>%
+        summarize(SizeFactor = exp(median(LogRatio)))
+
+    size_factors
+
+    # Well. Hum. These are *hugely* different, and also don’t correlate with the
+    # raw read counts per library:
+
+    read_counts_per_library = coverage %>%
+        filter(Species == 'Apis mellifera',
+               Biotype == 'protein\u00ADcoding') %>%
+        group_by(Library) %>%
+        summarize(Count = sum(Count)) %>%
+        mutate(SizeFactor = Count / mean(Count)) %>%
+        select(-Count)
+
+    inner_join(size_factors, read_counts_per_library, by = 'Library') %>%
+        with(cor(SizeFactor.x, SizeFactor.y, method = 'spearman'))
+
+    # Yeah … so we’ll instead use the read counts per library as a normalisation
+    # factor instead.
+
+    size_factors = read_counts_per_library
+
+    normalized_biotype_coverage =
+        inner_join(biotype_coverage, size_factors, by = 'Library') %>%
+        mutate(Count = Count / SizeFactor)
 
     modules::import('klmr/ggplots', attach = TRUE)
     theme_set(theme_publication())
@@ -88,8 +132,8 @@ sys$run({
                           binaxis = 'y', binwidth = 0.05, stackdir = 'center',
                           dotsize = 0.5, color = 'white'),
              scale_y_continuous(labels = scales::percent),
-             scale_color_manual(values = type_colors),
-             scale_fill_manual(values = type_colors),
+             scale_color_gray(),
+             scale_fill_gray(),
              labs(y = 'RNA fraction', color = NULL, fill = NULL),
              annotate('segment', x = -Inf, xend = Inf,
                       y = -0.05, yend = -0.05, color = 'black', size = 0.5),
@@ -117,17 +161,43 @@ sys$run({
         factor(x, levels = c(setdiff(levels(x), last), last))
     }
 
-    biotype_coverage %>%
+    filtered_biotype_coverage = normalized_biotype_coverage %>%
+        group_by(Library) %>%
+        mutate(Fraction = Count / sum(Count)) %>%
         group_by(Biotype) %>%
-        filter(any(Fraction >= 0.01)) %>%
+        filter(any(Fraction >= 0.001)) %>%
         ungroup() %>%
-        mutate(Biotype = inverse_relevel(reorder(Biotype, -Fraction), 'other')) %>%
-        ggplot() +
-        aes(Which, Fraction, color = Which, fill = Which) +
-        facet_grid(. ~ Biotype, switch = 'x', labeller = wrap_label(12)) +
-        layout_mini_bars()
+        mutate(Biotype = inverse_relevel(reorder(Biotype, -Fraction), 'other'))
 
-    ggsave('data/plots/biotype-coverage-boxplot.pdf', width = 5, height = 5, useDingbats = FALSE)
+    mean_biotype_coverage = filtered_biotype_coverage %>%
+        group_by(Which, Biotype) %>%
+        summarize(Count = mean(Count)) %>%
+        ungroup()
+
+    powers = function (x, base = 10) {
+        lapply(x, function (x) bquote(.(base) ^ .(log(x) / log(base))))
+    }
+
+    ggplot() +
+        aes(Which, Count, color = Which, fill = Which) +
+        geom_col(data = mean_biotype_coverage) +
+        geom_dotplot(data = filtered_biotype_coverage,
+                     position = position_dodge(width = 0.5), width = 0.5,
+                     binaxis = 'y', binwidth = 0.3, stackdir = 'center',
+                     dotsize = 0.5, color = 'white') +
+        facet_grid(. ~ Biotype, switch = 'x', labeller = wrap_label(12)) +
+        scale_y_log10(breaks = 10 ^ seq(0, 6), labels = powers) +
+        scale_color_gray() +
+        scale_fill_gray() +
+        labs(y = 'RNA counts', color = NULL, fill = NULL) +
+        annotate('segment', x = -Inf, xend = Inf,
+                 y = 0.5, yend = 0.5, color = 'black', size = 0.5) +
+        coord_cartesian(expand = FALSE) +
+        theme(axis.text.x = element_blank(),
+              axis.title.x = element_blank(),
+              strip.text.x = element_text(vjust = 1))
+
+    ggsave('data/plots/biotype-coverage-boxplot.pdf', width = 9, height = 5, useDingbats = FALSE)
 })
 
 # vim: ft=r
