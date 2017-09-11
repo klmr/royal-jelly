@@ -25,7 +25,8 @@ sys$run({
         select(Gene = 1, Biotype = 2) %>%
         mutate(Gene = sub('^gi\\|[^|]+\\|(ref|gb)\\|([^|]+)\\|$', '\\2', Gene),
                Biotype = gsub('_', '\u00AD', Biotype)) %>%
-        add_row(Gene = 'microRNA gene', Biotype = 'miRNA')
+        add_row(Gene = 'microRNA gene', Biotype = 'miRNA') %>%
+        mutate(Biotype = ifelse(Biotype == 'miRNA', 'pre\u00ADmiRNA', Biotype))
 
     total_mapped = io$read_table(args$total_mapped) %>%
         select(Library = 1, Count = 2) %>%
