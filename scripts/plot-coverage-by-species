@@ -97,9 +97,8 @@ sys$run({
     # Well. Hum. These are *hugely* different, and also don’t correlate with the
     # raw read counts per library:
 
-    read_counts_per_library = coverage %>%
-        filter(Species == 'Apis mellifera',
-               Biotype == 'protein\u00ADcoding') %>%
+    read_counts_per_library = raw_coverage %>%
+        filter(! is.na(Gene)) %>%
         group_by(Library) %>%
         summarize(Count = sum(Count)) %>%
         mutate(SizeFactor = Count / mean(Count)) %>%
