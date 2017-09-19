@@ -112,6 +112,10 @@ sys$run({
 
     size_factors = read_counts_per_library
 
+    normalized_species_coverage =
+        inner_join(species_coverage, size_factors, by = 'Library') %>%
+        mutate(Count = Count / SizeFactor)
+
     normalized_biotype_coverage =
         inner_join(biotype_coverage, size_factors, by = 'Library') %>%
         mutate(Count = Count / SizeFactor)
@@ -137,14 +141,12 @@ sys$run({
              labs(y = 'RNA fraction', color = NULL, fill = NULL),
              annotate('segment', x = -Inf, xend = Inf,
                       y = -0.05, yend = -0.05, color = 'black', size = 0.5),
-             coord_cartesian(ylim = c(-0.01, 1)),
              theme(axis.text.x = element_blank(),
                    axis.title.x = element_blank(),
                    strip.text.x = element_text(vjust = 1))
          )
     }
 
-    # Only plot libraries which contribute at least 1% of the coverage.
     species_coverage %>%
         group_by(Which, Species) %>%
         filter(any(Fraction >= 0.01)) %>%
@@ -154,6 +156,18 @@ sys$run({
         aes(Which, Fraction, color = Which, fill = Which) +
         facet_grid(. ~ Species, switch = 'x', labeller = wrap_label(15)) +
         layout_mini_bars()
+
+    # Only plot libraries which contribute at least 1% of the coverage.
+    normalized_species_coverage %>%
+        group_by(Which, Species) %>%
+        filter(any(Fraction >= 0.01)) %>%
+        ungroup() %>%
+        mutate(Species = relevel(reorder(Species, -Count), 'Apis mellifera')) %>%
+        ggplot() +
+        aes(Which, Count, color = Which, fill = Which) +
+        facet_grid(. ~ Species, switch = 'x', labeller = wrap_label(15)) +
+        layout_mini_bars() +
+        scale_y_continuous('RNA count')
 
     ggsave('data/plots/species-coverage-boxplot.pdf', width = 5, height = 5, useDingbats = FALSE)
 
