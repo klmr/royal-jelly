@@ -103,21 +103,17 @@ sys$run({
         group_by(Library, Which, Species) %>%
         summarize(Count = sum(Count)) %>%
         mutate(Fraction = Count / sum(Count)) %>%
-        ungroup()
+        ungroup() %>%
+        inner_join(size_factors, by = 'Library') %>%
+        mutate(Count = Count / SizeFactor)
 
     biotype_coverage = coverage %>%
         filter(Species == 'Apis mellifera') %>%
         group_by(Library, Which, Biotype) %>%
         summarize(Count = sum(Count)) %>%
         mutate(Fraction = Count / sum(Count)) %>%
-        ungroup()
-
-    normalized_species_coverage =
-        inner_join(species_coverage, size_factors, by = 'Library') %>%
-        mutate(Count = Count / SizeFactor)
-
-    normalized_biotype_coverage =
-        inner_join(biotype_coverage, size_factors, by = 'Library') %>%
+        ungroup() %>%
+        inner_join(size_factors, by = 'Library') %>%
         mutate(Count = Count / SizeFactor)
 
     modules::import('klmr/ggplots', attach = TRUE)
@@ -170,7 +166,7 @@ sys$run({
     }
 
     # Only plot libraries which contribute at least 1% of the coverage.
-    normalized_species_coverage %>%
+    species_coverage %>%
         group_by(Which, Species) %>%
         filter(any(Fraction >= 0.01)) %>%
         ungroup() %>%
