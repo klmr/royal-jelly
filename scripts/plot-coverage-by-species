@@ -67,19 +67,6 @@ sys$run({
         filter(! is.na(Gene)) %>%
         bind_rows(unassigned_coverage)
 
-    species_coverage = coverage %>%
-        group_by(Library, Which, Species) %>%
-        summarize(Count = sum(Count)) %>%
-        mutate(Fraction = Count / sum(Count)) %>%
-        ungroup()
-
-    biotype_coverage = coverage %>%
-        filter(Species == 'Apis mellifera') %>%
-        select(-Species) %>%
-        group_by(Library, Which, Biotype) %>%
-        summarize(Count = sum(Count)) %>%
-        ungroup()
-
     # Calcuate size factors based on protein-coding genes only.
     size_factors = coverage %>%
         filter(Species == 'Apis mellifera',
@@ -111,6 +98,19 @@ sys$run({
     # factor instead.
 
     size_factors = read_counts_per_library
+
+    species_coverage = coverage %>%
+        group_by(Library, Which, Species) %>%
+        summarize(Count = sum(Count)) %>%
+        mutate(Fraction = Count / sum(Count)) %>%
+        ungroup()
+
+    biotype_coverage = coverage %>%
+        filter(Species == 'Apis mellifera') %>%
+        group_by(Library, Which, Biotype) %>%
+        summarize(Count = sum(Count)) %>%
+        mutate(Fraction = Count / sum(Count)) %>%
+        ungroup()
 
     normalized_species_coverage =
         inner_join(species_coverage, size_factors, by = 'Library') %>%
@@ -191,8 +191,6 @@ sys$run({
     }
 
     normalized_biotype_coverage %>%
-        group_by(Library) %>%
-        mutate(Fraction = Count / sum(Count)) %>%
         group_by(Biotype) %>%
         filter(any(Fraction >= 0.001)) %>%
         ungroup() %>%
