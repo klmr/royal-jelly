@@ -99,22 +99,28 @@ sys$run({
 
     size_factors = read_counts_per_library
 
+    normalize_counts = function (.data, size_factors, join) {
+        inner_join(.data, size_factors, by = join) %>%
+            mutate(Count = Count / SizeFactor)
+    }
+
+    compute_fractions = function (.data, ...) {
+        columns = quos(...)
+        .data %>%
+            group_by(!!! columns) %>%
+            summarize(Count = sum(Count)) %>%
+            mutate(Fraction = Count / sum(Count)) %>%
+            ungroup()
+    }
+
     species_coverage = coverage %>%
-        group_by(Library, Which, Species) %>%
-        summarize(Count = sum(Count)) %>%
-        mutate(Fraction = Count / sum(Count)) %>%
-        ungroup() %>%
-        inner_join(size_factors, by = 'Library') %>%
-        mutate(Count = Count / SizeFactor)
+        normalize_counts(size_factors, 'Library') %>%
+        compute_fractions(Library, Which, Species)
 
     biotype_coverage = coverage %>%
         filter(Species == 'Apis mellifera') %>%
-        group_by(Library, Which, Biotype) %>%
-        summarize(Count = sum(Count)) %>%
-        mutate(Fraction = Count / sum(Count)) %>%
-        ungroup() %>%
-        inner_join(size_factors, by = 'Library') %>%
-        mutate(Count = Count / SizeFactor)
+        normalize_counts(size_factors, 'Library') %>%
+        compute_fractions(Library, Which, Biotype)
 
     modules::import('klmr/ggplots', attach = TRUE)
     theme_set(theme_publication())
@@ -170,7 +176,7 @@ sys$run({
         group_by(Which, Species) %>%
         filter(any(Fraction >= 0.01)) %>%
         ungroup() %>%
-        mutate(Species = relevel(reorder(Species, -Count), 'Apis mellifera')) %>%
+        mutate(Species = relevel(reorder(Species, -Fraction), 'Apis mellifera')) %>%
         ggplot() +
         aes(Which, Count, color = Which, fill = Which) +
         facet_grid(. ~ Species, switch = 'x', labeller = wrap_label(15)) +
@@ -186,6 +192,7 @@ sys$run({
         lapply(x, function (x) bquote(.(base) ^ .(log(x) / log(base))))
     }
 
+    # Only plot libraries which contribute at least 0.1% of the coverage.
     normalized_biotype_coverage %>%
         group_by(Biotype) %>%
         filter(any(Fraction >= 0.001)) %>%
