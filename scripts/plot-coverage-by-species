@@ -170,8 +170,16 @@ sys$run({
          )
     }
 
+    inverse_relevel = function (x, last) {
+        factor(x, levels = c(setdiff(levels(x), last), last))
+    }
+
     multiples = function (multiplier) function (x) {
         lapply(x, function (x) x / multiplier)
+    }
+
+    powers = function (base = 10) function (x) {
+        lapply(x, function (x) bquote(.(base) ^ .(log(x) / log(base))))
     }
 
     # Only plot libraries which contribute at least 1% of the coverage.
@@ -186,14 +194,6 @@ sys$run({
         layout_mini_bars(5e5, 0.65, scale_y_continuous('RNA count (×10,0000)', labels = multiples(100000)))
 
     ggsave('data/plots/species-coverage-boxplot.pdf', width = 5, height = 5, useDingbats = FALSE)
-
-    inverse_relevel = function (x, last) {
-        factor(x, levels = c(setdiff(levels(x), last), last))
-    }
-
-    powers = function (base = 10) function (x) {
-        lapply(x, function (x) bquote(.(base) ^ .(log(x) / log(base))))
-    }
 
     # Only plot libraries which contribute at least 0.1% of the coverage.
     normalized_biotype_coverage %>%
