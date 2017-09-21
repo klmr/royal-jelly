@@ -129,21 +129,43 @@ sys$run({
         function (x) mutate_all(x, funs(stringr::str_wrap(., n)))
     }
 
-    layout_mini_bars = function (...) {
+    #' Summary plot with individual points as dotplot
+    #'
+    #' @param bin_width the bin width to use for the dotplot
+    #' @param dot_size the dot size to use for the dotplot, relative to the
+    #' \code{bin_width}
+    #' @param scale a \code{Scale} instance that serves as the y-axis scale
+    layout_mini_bars = function (bin_width, dot_size, scale) {
+        mean_fun = switch(
+            scale$trans$name,
+            identity = mean,
+            `log-10` = function (x) log10(mean(10 ^ x)),
+            stop('unsupported scale provided (not log10 or continuous)')
+        )
+
         list(
-             stat_summary(fun.y = mean, geom = 'bar', color = NA, alpha = 0.5),
-             geom_dotplot(position = position_dodge(width = 0.5), width = 0.5,
-                          binaxis = 'y', binwidth = 0.05, stackdir = 'center',
-                          dotsize = 0.5, color = 'white'),
-             scale_y_continuous(labels = scales::percent),
-             scale_color_gray(),
-             scale_fill_gray(),
-             labs(y = 'RNA fraction', color = NULL, fill = NULL),
-             annotate('segment', x = -Inf, xend = Inf,
-                      y = -0.05, yend = -0.05, color = 'black', size = 0.5),
-             theme(axis.text.x = element_blank(),
-                   axis.title.x = element_blank(),
-                   strip.text.x = element_text(vjust = 1))
+            stat_summary(fun.y = mean_fun, geom = 'bar', color = NA, alpha = 0.5),
+            geom_dotplot(
+                position = position_dodge(width = 0.5), width = 0.5,
+                binaxis = 'y', stackdir = 'center',
+                binwidth = bin_width, dotsize = dot_size,
+                color = 'white'
+            ),
+            scale,
+            scale_color_gray(),
+            scale_fill_gray(),
+            labs(y = 'RNA fraction', color = NULL, fill = NULL),
+            annotate(
+                'segment',
+                x = -Inf, xend = Inf,
+                y = -0.05, yend = -0.05,
+                color = 'black', size = 0.5
+            ),
+            theme(
+                axis.text.x = element_blank(),
+                axis.title.x = element_blank(),
+                strip.text.x = element_text(vjust = 1)
+            )
          )
     }
 
@@ -156,8 +178,7 @@ sys$run({
         ggplot() +
         aes(Which, Count, color = Which, fill = Which) +
         facet_grid(. ~ Species, switch = 'x', labeller = wrap_label(15)) +
-        layout_mini_bars() +
-        scale_y_continuous('RNA count')
+        layout_mini_bars(5e5, 0.65, scale_y_continuous('RNA count'))
 
     ggsave('data/plots/species-coverage-boxplot.pdf', width = 5, height = 5, useDingbats = FALSE)
 
@@ -169,8 +190,6 @@ sys$run({
         lapply(x, function (x) bquote(.(base) ^ .(log(x) / log(base))))
     }
 
-    log_mean = function (x) log10(mean(10 ^ x))
-
     normalized_biotype_coverage %>%
         group_by(Library) %>%
         mutate(Fraction = Count / sum(Count)) %>%
@@ -180,21 +199,8 @@ sys$run({
         mutate(Biotype = inverse_relevel(reorder(Biotype, -Fraction), 'other')) %>%
         ggplot() +
         aes(Which, Count, color = Which, fill = Which) +
-        stat_summary(fun.y = log_mean, geom = 'bar', color = NA) +
-        geom_dotplot(position = position_dodge(width = 0.5), width = 0.5,
-                     binaxis = 'y', binwidth = 0.3, stackdir = 'center',
-                     dotsize = 0.5, color = 'white') +
         facet_grid(. ~ Biotype, switch = 'x', labeller = wrap_label(12)) +
-        scale_y_log10(breaks = 10 ^ seq(0, 6), labels = powers) +
-        scale_color_gray() +
-        scale_fill_gray() +
-        labs(y = 'RNA counts', color = NULL, fill = NULL) +
-        annotate('segment', x = -Inf, xend = Inf,
-                 y = 0.5, yend = 0.5, color = 'black', size = 0.5) +
-        coord_cartesian(expand = FALSE) +
-        theme(axis.text.x = element_blank(),
-              axis.title.x = element_blank(),
-              strip.text.x = element_text(vjust = 1))
+        layout_mini_bars(0.2, 1, scale_y_log10(breaks = 10 ^ seq(0, 6), labels = powers))
 
     ggsave('data/plots/biotype-coverage-boxplot.pdf', width = 9, height = 5, useDingbats = FALSE)
 })
