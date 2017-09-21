@@ -165,28 +165,23 @@ sys$run({
         factor(x, levels = c(setdiff(levels(x), last), last))
     }
 
-    filtered_biotype_coverage = normalized_biotype_coverage %>%
+    powers = function (x, base = 10) {
+        lapply(x, function (x) bquote(.(base) ^ .(log(x) / log(base))))
+    }
+
+    log_mean = function (x) log10(mean(10 ^ x))
+
+    normalized_biotype_coverage %>%
         group_by(Library) %>%
         mutate(Fraction = Count / sum(Count)) %>%
         group_by(Biotype) %>%
         filter(any(Fraction >= 0.001)) %>%
         ungroup() %>%
-        mutate(Biotype = inverse_relevel(reorder(Biotype, -Fraction), 'other'))
-
-    mean_biotype_coverage = filtered_biotype_coverage %>%
-        group_by(Which, Biotype) %>%
-        summarize(Count = mean(Count)) %>%
-        ungroup()
-
-    powers = function (x, base = 10) {
-        lapply(x, function (x) bquote(.(base) ^ .(log(x) / log(base))))
-    }
-
-    ggplot() +
+        mutate(Biotype = inverse_relevel(reorder(Biotype, -Fraction), 'other')) %>%
+        ggplot() +
         aes(Which, Count, color = Which, fill = Which) +
-        geom_col(data = mean_biotype_coverage) +
-        geom_dotplot(data = filtered_biotype_coverage,
-                     position = position_dodge(width = 0.5), width = 0.5,
+        stat_summary(fun.y = log_mean, geom = 'bar', color = NA) +
+        geom_dotplot(position = position_dodge(width = 0.5), width = 0.5,
                      binaxis = 'y', binwidth = 0.3, stackdir = 'center',
                      dotsize = 0.5, color = 'white') +
         facet_grid(. ~ Biotype, switch = 'x', labeller = wrap_label(12)) +
