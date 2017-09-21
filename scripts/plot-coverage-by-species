@@ -154,9 +154,8 @@ sys$run({
                 color = 'white'
             ),
             scale,
-            scale_color_gray(),
-            scale_fill_gray(),
-            labs(y = 'RNA fraction', color = NULL, fill = NULL),
+            scale_color_gray(NULL),
+            scale_fill_gray(NULL),
             annotate(
                 'segment',
                 x = -Inf, xend = Inf,
@@ -171,6 +170,10 @@ sys$run({
          )
     }
 
+    multiples = function (multiplier) function (x) {
+        lapply(x, function (x) x / multiplier)
+    }
+
     # Only plot libraries which contribute at least 1% of the coverage.
     species_coverage %>%
         group_by(Which, Species) %>%
@@ -180,7 +183,7 @@ sys$run({
         ggplot() +
         aes(Which, Count, color = Which, fill = Which) +
         facet_grid(. ~ Species, switch = 'x', labeller = wrap_label(15)) +
-        layout_mini_bars(5e5, 0.65, scale_y_continuous('RNA count'))
+        layout_mini_bars(5e5, 0.65, scale_y_continuous('RNA count (×10,0000)', labels = multiples(100000)))
 
     ggsave('data/plots/species-coverage-boxplot.pdf', width = 5, height = 5, useDingbats = FALSE)
 
@@ -188,7 +191,7 @@ sys$run({
         factor(x, levels = c(setdiff(levels(x), last), last))
     }
 
-    powers = function (x, base = 10) {
+    powers = function (base = 10) function (x) {
         lapply(x, function (x) bquote(.(base) ^ .(log(x) / log(base))))
     }
 
@@ -201,7 +204,7 @@ sys$run({
         ggplot() +
         aes(Which, Count, color = Which, fill = Which) +
         facet_grid(. ~ Biotype, switch = 'x', labeller = wrap_label(12)) +
-        layout_mini_bars(0.2, 1, scale_y_log10(breaks = 10 ^ seq(0, 6), labels = powers))
+        layout_mini_bars(0.2, 1, scale_y_log10('RNA count', breaks = 10 ^ seq(0, 6), labels = powers()))
 
     ggsave('data/plots/biotype-coverage-boxplot.pdf', width = 9, height = 5, useDingbats = FALSE)
 })
