@@ -191,7 +191,7 @@ sys$run({
         ggplot() +
         aes(Which, Count, color = Which, fill = Which) +
         facet_grid(. ~ Species, switch = 'x', labeller = wrap_label(15)) +
-        layout_mini_bars(5e5, 0.65, scale_y_continuous('RNA count (×10,0000)', labels = multiples(100000)))
+        layout_mini_bars(5e5, 0.5, scale_y_continuous('normalised RNA count (in million)', labels = multiples(1e6)))
 
     ggsave('data/plots/species-coverage-boxplot.pdf', width = 5, height = 5, useDingbats = FALSE)
 
@@ -204,7 +204,7 @@ sys$run({
         ggplot() +
         aes(Which, Count, color = Which, fill = Which) +
         facet_grid(. ~ Biotype, switch = 'x', labeller = wrap_label(12)) +
-        layout_mini_bars(0.2, 1, scale_y_log10('RNA count', breaks = 10 ^ seq(0, 6), labels = powers()))
+        layout_mini_bars(0.2, 1, scale_y_log10('normalised RNA count', breaks = 10 ^ seq(0, 6), labels = powers()))
 
     ggsave('data/plots/biotype-coverage-boxplot.pdf', width = 9, height = 5, useDingbats = FALSE)
 })
