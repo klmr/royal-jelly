@@ -445,6 +445,16 @@ data/quant/all-mapped-royal-jelly-counts.tsv: ${mapped-reads} ${mapped-indexed-r
 		samtools view -c -F4 $$file $$REGIONS; \
 	done > $@
 
+data/quant/unmapped-royal-jelly-counts.tsv: ${mapped-reads}
+	for file in $(^:.bam=Log.final.out); do  \
+		echo -n "$$(basename $$file)	"; \
+		echo $$(( \
+			$$(grep 'Number of input reads' $$file | cut -d '|' -f2)  - \
+			$$(grep 'Uniquely mapped reads number' $$file | cut -d '|' -f2) - \
+			$$(grep 'Number of reads mapped to multiple loci' $$file | cut -d '|' -f2) \
+		)); \
+	done > $@
+
 .DEFAULT_GOAL := show-help
 # See <https://gist.github.com/klmr/575726c7e05d8780505a> for explanation.
 .PHONY: show-help
