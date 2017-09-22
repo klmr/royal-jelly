@@ -145,6 +145,12 @@ sys$run({
             stop('unsupported scale provided (not log10 or continuous)')
         )
 
+        segment_y = switch(
+            scale$trans$name,
+            identity = -0.05,
+            `log-10` = 1
+        )
+
         list(
             stat_summary(fun.y = mean_fun, geom = 'bar', color = NA, alpha = 0.5),
             geom_dotplot(
@@ -159,9 +165,10 @@ sys$run({
             annotate(
                 'segment',
                 x = -Inf, xend = Inf,
-                y = -0.05, yend = -0.05,
+                y = segment_y, yend = segment_y,
                 color = 'black', size = 0.5
             ),
+            coord_cartesian(expand = FALSE),
             theme(
                 axis.text.x = element_blank(),
                 axis.title.x = element_blank(),
