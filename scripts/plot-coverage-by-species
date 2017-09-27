@@ -207,7 +207,7 @@ sys$run({
     significance
 
     # Only plot libraries which contribute at least 1% of the coverage.
-    species_coverage %>%
+    species_coverage_plot = species_coverage %>%
         group_by(Which, Species) %>%
         filter(any(Fraction >= 0.01)) %>%
         ungroup() %>%
@@ -216,6 +216,26 @@ sys$run({
         aes(Which, Count, color = Which, fill = Which) +
         facet_grid(. ~ Species, switch = 'x', labeller = wrap_label(15)) +
         layout_mini_bars(5e5, 0.5, scale_y_continuous('normalised RNA count (in million)', labels = multiples(1e6)))
+
+    cow = modules::import_package('cowplot')
+
+    annotate_significance = function (which, from, to, y) {
+        p = filter(significance, grepl(which, Which))$`p-value`
+        psym = unclass(symnum(
+            p, corr = FALSE, na = FALSE,
+            cutpoints = c(0, 0.001, 0.01, 0.05, 0.1, 1),
+            symbols = c('***', '**', '*', '.', 'n.s.')
+        ))
+
+        list(
+            cow$draw_line(c(from, to), c(y, y)),
+            cow$draw_label(psym, x = (from + to) / 2, y = y + 0.015)
+        )
+    }
+
+    cow$ggdraw(species_coverage_plot) +
+        annotate_significance('MRJP', 0.11, 0.3, 0.3) +
+        annotate_significance('royal jelly', 0.21, 0.41, 0.35)
 
     ggsave('data/plots/species-coverage-boxplot.pdf', width = 5, height = 5, useDingbats = FALSE)
 
