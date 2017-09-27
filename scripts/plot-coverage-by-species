@@ -189,6 +189,23 @@ sys$run({
         lapply(x, function (x) bquote(.(base) ^ .(log(x) / log(base))))
     }
 
+    tidy_ttest = function (a, b) {
+        broom::tidy(t.test(a, b))
+    }
+
+    significance = species_coverage %>%
+        filter(grepl('Apis|Varroa', Species)) %>%
+        select(-Fraction, -Library) %>%
+        group_by(Which, Species) %>%
+        tidyr$nest(.key = Count) %>%
+        mutate(Count = lapply(Count, `[[`, 'Count')) %>%
+        tidyr$spread(Species, Count) %>%
+        mutate(Test = Map(tidy_ttest, `Apis mellifera`, `Varroa Destructor Virus 1`)) %>%
+        tidyr$unnest(Test) %>%
+        select(Which, Stat = statistic, `p-value` = p.value, conf.low, conf.high)
+
+    significance
+
     # Only plot libraries which contribute at least 1% of the coverage.
     species_coverage %>%
         group_by(Which, Species) %>%
