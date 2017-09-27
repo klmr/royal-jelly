@@ -4,6 +4,7 @@ args = list(coverage = 'data/quant/royal-jelly-counts.tsv',
             design = 'raw/samples.csv',
             viruses = 'supporting/bee-virus-list.csv',
             total_mapped = 'data/quant/all-mapped-royal-jelly-counts.tsv',
+            unmapped = 'data/quant/unmapped-royal-jelly-counts.tsv',
             mirna_mapped = 'data/mirna/summary/all-counts.tsv')
 
 sys = modules::import('klmr/sys')
@@ -101,7 +102,8 @@ sys$run({
 
     normalize_counts = function (.data, size_factors, join) {
         inner_join(.data, size_factors, by = join) %>%
-            mutate(Count = Count / SizeFactor)
+            mutate(Count = Count / SizeFactor) %>%
+            select(-SizeFactor)
     }
 
     compute_fractions = function (.data, ...) {
@@ -113,9 +115,27 @@ sys$run({
             ungroup()
     }
 
-    species_coverage = coverage %>%
+    unmapped = io$read_table(args$unmapped) %>%
+        select(Library = 1, Count = 2) %>%
+        mutate(Library = sub('_.*', '', Library) %>% gsub('-', '_', .),
+               Species = factor('unmapped', c(levels(coverage$Species), 'unmapped')),
+               Which = ifelse(grepl('^MJ3', Library), 'MRJP­3', 'royal jelly'),
+               Fraction = 1) %>%
+        normalize_counts(size_factors, 'Library')
+
+    species_coverage_pre = coverage %>%
         normalize_counts(size_factors, 'Library') %>%
-        compute_fractions(Library, Which, Species)
+        compute_fractions(Library, Which, Species) %>%
+        mutate(Species = `levels<-`(Species, c(levels(Species), 'unmapped')))
+
+
+    # Fudge count values of unmapped reads. This is done to get bars/points
+    # that are “about right”. The bar is then broken, and the y-axis value
+    # adjusted, in manual postprocessing.
+
+    species_coverage = unmapped %>%
+        mutate(Count = Count - min(Count) + max(species_coverage_pre$Count)) %>%
+        bind_rows(species_coverage_pre, .)
 
     biotype_coverage = coverage %>%
         filter(Species == 'Apis mellifera') %>%
@@ -211,7 +231,7 @@ sys$run({
         group_by(Which, Species) %>%
         filter(any(Fraction >= 0.01)) %>%
         ungroup() %>%
-        mutate(Species = relevel(reorder(Species, -Fraction), 'Apis mellifera')) %>%
+        mutate(Species = inverse_relevel(relevel(reorder(Species, -Fraction), 'Apis mellifera'), 'unmapped')) %>%
         ggplot() +
         aes(Which, Count, color = Which, fill = Which) +
         facet_grid(. ~ Species, switch = 'x', labeller = wrap_label(15)) +
