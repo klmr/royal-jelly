@@ -1,4 +1,4 @@
-#!/usr/bin/env/Rscript
+#!/usr/bin/env Rscript
 
 sys = modules::import('klmr/sys')
 
@@ -17,15 +17,24 @@ sys$run({
     tidyr = modules::import_package('tidyr', attach = TRUE)
 
     all_bw_files = dir(args$coverage_path, pattern = '\\.bw$', full.names = TRUE)
+    watson_bw_files = grep('-minus', all_bw_files, value = TRUE, invert = TRUE)
+    crick_bw_files = grep('-minus', all_bw_files, value = TRUE)
 
     samples = io$read_table(args$design, header = TRUE) %>%
         filter(Lane == 1) %>%
-        select(Sample_ID) %>%
-        rename(Library = Sample_ID) %>%
+        select(Library = Sample_ID) %>%
         mutate(Library = gsub('_', '-', Library),
-               Which = ifelse(grepl('^MJ3', Library), 'MRJP­3', 'royal jelly'),
-               File = vapply(Library, grep, character(1), all_bw_files, value = TRUE)) %>%
-        mutate(Library = gsub('-', '­', Library))
+               Which = ifelse(grepl('^MJ3', Library), 'MRJP­3', 'royal jelly'))
+
+    watson_samples = samples %>%
+        mutate(File = vapply(Library, grep, character(1), watson_bw_files, value = TRUE)) %>%
+        mutate(Library = gsub('-', '­', Library), Strand = '+')
+
+    crick_samples = samples %>%
+        mutate(File = vapply(Library, grep, character(1), crick_bw_files, value = TRUE)) %>%
+        mutate(Library = gsub('-', '­', Library), Strand = '-')
+
+    samples = bind_rows(watson_samples, crick_samples)
 
     annotation = rtl$import(args$annotation)
 
@@ -42,7 +51,7 @@ sys$run({
         result
     }
 
-    modules::import('coverage_plot', attach = TRUE)
+    modules::import('./coverage_plot', attach = TRUE)
 
     load_coverage = function (files) {
         lapply(files, function (file) varroa_coverage(rtl$import(file)))
@@ -64,17 +73,18 @@ sys$run({
 
     type_colors = c(`MRJP­3` = '#7ba700', `royal jelly` = '#007ba7')
 
-    ggplot(coverage) +
-        aes(Position, Coverage, fill = Which) +
+    p = ggplot(coverage) +
+        aes(Position, Coverage, fill = Which, alpha = Strand) +
         geom_ribbon(aes(ymax = Coverage), ymin = 0) +
         scale_x_genomic(multiplier = 1e3) +
         scale_y_continuous(labels = scales::comma, breaks = y_extrema) +
+        scale_alpha_manual(values = c(`-` = 0.75, `+` = 1), guide = FALSE) +
         scale_fill_manual(NULL, values = type_colors, guide = FALSE) +
         facet_grid(Library ~ ., scales = 'free_y') +
         xlab('VDV­1 genome position') +
         theme(axis.ticks.x = element_line())
 
-    ggsave(args$outfile, width = 6, height = 4)
+    ggsave(args$outfile, p, width = 6, height = 4)
 })
 
 # vim: ft=r
