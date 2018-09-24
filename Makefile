@@ -383,13 +383,15 @@ data/coverage/%.genomecov: data/mapped/%.bam
 ## Generate BigWig files of the bee/viral read coverage
 bigwig: ${bigwig-files}
 
+.PRECIOUS: ${bigwig-files:%.bw=%.bedgraph}
+
 data/coverage/%.bedgraph: data/mapped/%.bam
 	@$(mkdir)
-	${bsub} $(call mem,1000) "./scripts/sorted-bedgraph '$<' '$@' -strand +"
+	${bsub} $(call mem,1000) "./scripts/sorted-bedgraph '$<' '$@'"
 
 data/coverage/%-minus.bedgraph: data/mapped/%.bam
 	@$(mkdir)
-	${bsub} $(call mem,1000) "./scripts/sorted-bedgraph '$<' '$@.tmp' -strand -"
+	${bsub} $(call mem,1000) "./scripts/sorted-bedgraph -s- '$<' '$@.tmp'"
 	awk -vOFS=$$'\t' '{print $$1,$$2,$$3,-$$4}' '$@.tmp' > '$@'
 	rm '$@.tmp'
 
