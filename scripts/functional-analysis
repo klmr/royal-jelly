@@ -1,0 +1,129 @@
+#!/usr/bin/env Rscript
+
+sys = modules::import('klmr/sys')
+
+file_plot = function (filename, expr, ...) {
+    device = match.fun(tools::file_ext(filename))
+    device(filename, ...)
+    on.exit(dev.off())
+    expr
+}
+
+sys$run({
+    args = list(
+        design = 'raw/samples.csv',
+        quant = 'data/quant/royal-jelly-counts.tsv',
+        genes = 'data/apis-go-terms.txt',
+        outpath = 'data/quant/'
+    )
+
+    library(dplyr)
+    io = modules::import('ebi-predocs/ebits/io')
+
+    samples = io$read_table(args$design, header = TRUE) %>%
+        filter(Lane == 1) %>%
+        select(Library = Sample_ID) %>%
+        mutate(
+            Library = gsub('_', '-', Library),
+            Which = ifelse(grepl('^MJ3', Library), 'MRJP­3', 'royal jelly'),
+            Which = relevel(factor(Which), 'royal jelly')
+        )
+
+    genes = readr::read_tsv(args$genes) %>%
+        select(Gene = 1, GO = 2, `GO term name`)
+    gene_names = unique(genes$Gene)
+
+    counts = readr::read_tsv(args$quant) %>%
+        select(Gene, !!! purrr::map(samples$Library, ~ quo(matches(!! .)))) %>%
+        filter(Gene %in% gene_names) %>%
+        `colnames<-`(sub('_.*', '', colnames(.)))
+
+    counts_mat = counts %>%
+        as.data.frame() %>%
+        tibble::column_to_rownames('Gene') %>%
+        as.matrix()
+
+    # Filter out genes for which all counts are almost zero
+    counts_mat = counts_mat[rowSums(counts_mat < 2) != 5L, ]
+
+    library(DESeq2)
+
+    dds = DESeqDataSetFromMatrix(counts_mat, samples, ~ Which)
+    dds = DESeq(dds)
+    rld = rlog(dds)
+
+    results = results(dds)
+    summary(results)
+
+    file_plot(file.path(args$outpath, 'pca.pdf'), {
+        plot(plotPCA(rld, intgroup = 'Which'))
+    })
+
+    file_plot(file.path(args$outpath, 'disp-ests-scatter.pdf'), {
+        plotDispEsts(dds)
+    })
+
+    file_plot(file.path(args$outpath, 'ma-scatter.pdf'), {
+        plotMA(dds)
+    })
+
+    file_plot(file.path(args$outpath, 'p-value-histogram.pdf'), {
+        hist(results$pvalue, col = 'gray50', border = 'white', breaks = 20)
+    })
+
+    top_var_genes = head(order(- rowVars(assay(rld))), 35)
+
+    file_plot(file.path(args$outpath, 'expr-clustering-heatmap.pdf'), {
+        colors = colorRampPalette(rev(RColorBrewer::brewer.pal(9, 'PuOr')))(255)
+        sidecols = c('grey', 'dodgerblue')[rld$Which]
+        mat = assay(rld)[top_var_genes, ] %>% {. - rowMeans(.)}
+        colnames(mat) = rld$Library
+        heatmap(
+            mat,
+            col = colors, ColSideColors = sidecols,
+            labRow = FALSE, margins = c(10, 2), scale = 'row'
+        )
+    })
+
+    library(piano)
+    gsc = loadGSC(as.matrix(select(genes, Gene, GO)))
+    stat = setNames(results$stat, rownames(results))
+    gsa = runGSA(stat, gsc = gsc, geneSetStat = 'gsea', gsSizeLim = c(3, Inf))
+
+    go_terms = distinct(select(genes, -Gene))
+    gsa_table = GSAsummaryTable(gsa) %>%
+        inner_join(go_terms, by = c(Name = 'GO')) %>%
+        select(
+            Name,
+            Description = `GO term name`,
+            `# genes` = `Genes (tot)`,
+            Stat = `Stat (dist.dir)`,
+            `p (up)` = `p (dist.dir.up)`,
+            `p (down)` = `p (dist.dir.dn)`,
+            `p-adj (up)` = `p adj (dist.dir.up)`,
+            `p-adj (down)` = `p adj (dist.dir.dn)`,
+        )
+
+    top_up = gsa_table %>%
+        filter(`p-adj (up)` < 0.05) %>%
+        arrange(`p-adj (up)`, desc(Stat)) %>%
+        select(- matches('\\(down\\)'))
+
+    top_down = gsa_table %>%
+        filter(`p-adj (down)` < 0.05) %>%
+        arrange(`p-adj (down)`, Stat) %>%
+        select(- matches('\\(up\\)'))
+
+    readr::write_tsv(top_up, file.path(args$outpath, 'gsea-up.xls'))
+    readr::write_tsv(top_down, file.path(args$outpath, 'gsea-down.xls'))
+
+    file_plot(file.path(args$outpath, 'gsea-network.pdf'), {
+        gsa_plot = gsa
+        names(gsa_plot$gsc) = go_terms %>%
+            semi_join(tibble(GO = names(gsa$gsc)), by = 'GO') %>%
+            with(`GO term name`)
+        networkPlot(gsa_plot, class = 'distinct', direction = 'both', significance = 0.01)
+    })
+})
+
+# vim: ft=r
