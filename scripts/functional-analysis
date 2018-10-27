@@ -1,0 +1,178 @@
+#!/usr/bin/env Rscript
+
+sys = modules::import('klmr/sys')
+
+file_plot = function (filename, expr, ...) {
+    device = match.fun(tools::file_ext(filename))
+    device(filename, ...)
+    on.exit(dev.off())
+    expr
+}
+
+gene_lengths = function (annotation) {
+    db = rtracklayer::import(annotation)
+    tapply(IRanges::width(db), list(db$gene_id), mean)
+}
+
+sys$run({
+    args = list(
+        design = 'raw/samples.csv',
+        quant = 'data/quant/royal-jelly-counts.tsv',
+        annotation = 'dot-dot-shared/annotation/apis_mellifera-viruses/Apis_mellifera.GCA_000002195.1.32-viruses.gtf',
+        genes = 'data/apis-go-terms.txt',
+        outpath = 'data/quant'
+    )
+
+    library(dplyr)
+    library(tidyr)
+    io = modules::import('ebi-predocs/ebits/io')
+
+    samples = io$read_table(args$design, header = TRUE) %>%
+        filter(Lane == 1) %>%
+        select(Library = Sample_ID) %>%
+        mutate(
+            Library = gsub('_', '-', Library),
+            Which = ifelse(grepl('^MJ3', Library), 'MRJP­3', 'royal jelly'),
+            Which = relevel(factor(Which), 'royal jelly')
+        )
+
+    genes = readr::read_tsv(args$genes) %>%
+        select(Gene = 1, GO = 2, `GO term name`)
+    gene_names = unique(genes$Gene)
+
+    counts = readr::read_tsv(args$quant) %>%
+        select(Gene, !!! purrr::map(samples$Library, ~ quo(matches(!! .)))) %>%
+        filter(Gene %in% gene_names) %>%
+        `colnames<-`(sub('_.*', '', colnames(.)))
+
+    per_cond = counts %>%
+        gather(Library, Count, - Gene) %>%
+        mutate(Expressed = as.integer(Count >= 2))
+
+    library(goseq)
+
+    genelengths = gene_lengths(args$annotation)[gene_names]
+
+    get_enrichment = function (df) {
+        expressed = setNames(df$Expressed, df$Gene)
+        pwf = nullp(expressed, bias.data = genelengths, plot.fit = FALSE)
+        goseq(pwf, gene2cat = as.data.frame(genes[, c(1, 2)]), test.cats = 'GO:BP')
+    }
+
+    go_per_group = per_cond %>%
+        group_by(Library) %>%
+        do(get_enrichment(.)) %>%
+        filter(numInCat > 4L) %>%
+        ungroup() %>%
+        rename(pvalue = over_represented_pvalue) %>%
+        select(- under_represented_pvalue) %>%
+        filter(pvalue < 0.05)
+
+    readr::write_tsv(go_per_group, file.path(args$outpath, 'go-terms-per-sample.xls'))
+
+    counts_mat = counts %>%
+        as.data.frame() %>%
+        tibble::column_to_rownames('Gene') %>%
+        as.matrix()
+
+    # Filter out genes for which all counts are almost zero
+    counts_mat = counts_mat[rowSums(counts_mat < 2) != 5L, ]
+
+    library(DESeq2)
+
+    dds = DESeqDataSetFromMatrix(counts_mat, samples, ~ Which)
+    dds = DESeq(dds)
+    rld = rlog(dds)
+
+    summary(results(dds))
+    results = results(dds) %>%
+        as.data.frame() %>%
+        tibble::rownames_to_column('gene')
+
+    file_plot(file.path(args$outpath, 'pca.pdf'), {
+        plot(plotPCA(rld, intgroup = 'Which'))
+    })
+
+    file_plot(file.path(args$outpath, 'disp-ests-scatter.pdf'), {
+        plotDispEsts(dds)
+    })
+
+    file_plot(file.path(args$outpath, 'ma-scatter.pdf'), {
+        plotMA(dds)
+    })
+
+    file_plot(file.path(args$outpath, 'p-value-histogram.pdf'), {
+        hist(results$pvalue, col = 'gray50', border = 'white', breaks = 20)
+    })
+
+    up_mrjp3 = filter(results, padj < 0.05 & log2FoldChange > 0)
+    up_rj = filter(results, padj < 0.05 & log2FoldChange < 0)
+
+    go_mrjp3 = semi_join(genes, up_mrjp3, by = c(Gene = 'gene')) %>%
+        filter(! is.na(GO)) %>%
+        select(- Gene) %>%
+        distinct()
+    go_rj = semi_join(genes, up_rj, by = c(Gene = 'gene')) %>%
+        filter(! is.na(GO)) %>%
+        select(- Gene) %>%
+        distinct()
+
+    readr::write_tsv(go_mrjp3, file.path(args$outpath, 'go-mrjp3.xls'))
+    readr::write_tsv(go_rj, file.path(args$outpath, 'go-rj.xls'))
+
+    top_var_genes = head(order(- rowVars(assay(rld))), 35)
+
+    file_plot(file.path(args$outpath, 'expr-clustering-heatmap.pdf'), {
+        colors = colorRampPalette(rev(RColorBrewer::brewer.pal(9, 'PuOr')))(255)
+        sidecols = c('grey', 'dodgerblue')[rld$Which]
+        mat = assay(rld)[top_var_genes, ] %>% {. - rowMeans(.)}
+        colnames(mat) = rld$Library
+        heatmap(
+            mat,
+            col = colors, ColSideColors = sidecols,
+            labRow = FALSE, margins = c(10, 2), scale = 'row'
+        )
+    })
+
+    library(piano)
+    gsc = loadGSC(as.matrix(select(genes, Gene, GO)))
+    stat = setNames(results$stat, results$gene)
+    gsa = runGSA(stat, gsc = gsc, geneSetStat = 'gsea', gsSizeLim = c(3, Inf))
+
+    go_terms = distinct(select(genes, -Gene))
+    gsa_table = GSAsummaryTable(gsa) %>%
+        inner_join(go_terms, by = c(Name = 'GO')) %>%
+        select(
+            Name,
+            Description = `GO term name`,
+            `# genes` = `Genes (tot)`,
+            Stat = `Stat (dist.dir)`,
+            `p (up)` = `p (dist.dir.up)`,
+            `p (down)` = `p (dist.dir.dn)`,
+            `p-adj (up)` = `p adj (dist.dir.up)`,
+            `p-adj (down)` = `p adj (dist.dir.dn)`,
+        )
+
+    top_up = gsa_table %>%
+        filter(`p-adj (up)` < 0.05) %>%
+        arrange(`p-adj (up)`, desc(Stat)) %>%
+        select(- matches('\\(down\\)'))
+
+    top_down = gsa_table %>%
+        filter(`p-adj (down)` < 0.05) %>%
+        arrange(`p-adj (down)`, Stat) %>%
+        select(- matches('\\(up\\)'))
+
+    readr::write_tsv(top_up, file.path(args$outpath, 'gsea-up.xls'))
+    readr::write_tsv(top_down, file.path(args$outpath, 'gsea-down.xls'))
+
+    file_plot(file.path(args$outpath, 'gsea-network.pdf'), {
+        gsa_plot = gsa
+        names(gsa_plot$gsc) = go_terms %>%
+            semi_join(tibble(GO = names(gsa$gsc)), by = 'GO') %>%
+            with(`GO term name`)
+        networkPlot(gsa_plot, class = 'distinct', direction = 'both', significance = 0.01)
+    })
+})
+
+# vim: ft=r
