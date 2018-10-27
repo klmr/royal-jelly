@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+set -e
+
+cleanup() {
+    rm -f "$bedfile"
+    rm -f "$plusfile"
+    rm -f "$minusfile"
+}
+
+usage() {
+    echo >&2 "Usage:"
+    echo >&2
+    echo >&2 "  $0 \$bamfile \$outfile"
+}
+
+if [ $# -ne 2 ]; then
+    echo >&2 "Error: missing arguments"
+    usage
+    exit 1
+fi
+
+bamfile="$1"
+outfile="$2"
+bedfile="$(mktemp)"
+
+trap cleanup EXIT
+
+samtools view -bf 0x2 "$bamfile" \
+| samtools sort -n \
+| bedtools bamtobed -bedpe \
+| awk -v OFS='\t' '{print $1, $2, $6, $7, $8, $9}' \
+> "$bedfile"
+
+plusfile="$(mktemp)"
+awk '$6=="+"' "$bedfile" | sort -k1,1 -k2,2n > "$plusfile"
+
+minusfile="$(mktemp)"
+awk '$6=="-"' "$bedfile" | sort -k1,1 -k2,2n > "$minusfile"
+
+# We require a minimum overlap of 25bp. Given that we also require at most 100bp
+# extent on either end of the dsRNA, this comes down to 25bp / 225bp = 0.11…
+bedtools intersect -f 0.1 -wo -sorted -a "$plusfile" -b "$minusfile" > "$outfile"
