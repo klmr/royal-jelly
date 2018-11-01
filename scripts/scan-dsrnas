@@ -23,21 +23,34 @@ fi
 bamfile="$1"
 outfile="$2"
 bedfile="$(mktemp)"
+echo >&2 "bedfile	$bedfile"
 
-trap cleanup EXIT
+# trap cleanup EXIT
 
 samtools view -bf 0x2 "$bamfile" \
 | samtools sort -n \
 | bedtools bamtobed -bedpe \
-| awk -v OFS='\t' '{print $1, $2, $6, $7, $8, $9}' \
+| awk -v OFS='\t' '{
+    min = $2 < $6 ? $2 : $6
+    max = $2 < $6 ? $6 : $2
+    print $1, min, max, $7, $8, $9
+}' \
 > "$bedfile"
 
 plusfile="$(mktemp)"
+echo >&2 "plusfile	$plusfile"
 awk '$6=="+"' "$bedfile" | sort -k1,1 -k2,2n > "$plusfile"
 
 minusfile="$(mktemp)"
+echo >&2 "minusfile	$minusfile"
 awk '$6=="-"' "$bedfile" | sort -k1,1 -k2,2n > "$minusfile"
 
 # We require a minimum overlap of 25bp. Given that we also require at most 100bp
-# extent on either end of the dsRNA, this comes down to 25bp / 225bp = 0.11…
-bedtools intersect -f 0.1 -wo -sorted -a "$plusfile" -b "$minusfile" > "$outfile"
+# extent on either end of the dsRNA, this comes down to 25bp / 225bp = 0.11….
+# Furthermore, fragment lengths exceeding a certain size are most likely in
+# error. Limit said fragment size to 1000. Basic sanity check: the fragments
+# must not exceed a certain length, say,
+# 1000bp.
+bedtools intersect -f 0.1 -wo -sorted -a "$plusfile" -b "$minusfile" \
+| awk '$13 >= 25 && .' \
+> "$outfile"
