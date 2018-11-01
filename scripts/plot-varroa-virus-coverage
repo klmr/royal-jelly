@@ -60,16 +60,25 @@ sys$run({
     coverage = samples %>%
         mutate(Coverage = load_coverage(File)) %>%
         mutate(Coverage = lapply(Coverage, coverage_layout)) %>%
-        tidyr$unnest()
+        select(-File) %>%
+        tidyr$unnest() %>%
+        mutate(Coverage = sign(Coverage) * log10(1 + abs(Coverage)))
 
     modules::import('klmr/ggplots', attach = TRUE)
     theme_set(theme_publication())
 
-    nice_floor = function (n, accuracy)
-        floor(n / accuracy) * accuracy
+    nice_floor = function (n, accuracy) {
+        sign(n) * floor(abs(n) / accuracy) * accuracy
+    }
 
-    y_extrema = function (range)
-        nice_floor(range[2], 1000)
+    y_extrema = function (range) {
+        range = nice_floor(sign(range) * (10 ^ abs(range) - 1), c(10, 100))
+        sign(range) * log10(1 + abs(range))
+    }
+
+    y_labels = function (x) {
+        vapply(10 ^ abs(x) - 1, scales::comma, character(1L))
+    }
 
     type_colors = c(`MRJP­3` = '#7ba700', `royal jelly` = '#007ba7')
 
@@ -77,7 +86,7 @@ sys$run({
         aes(Position, Coverage, fill = Which, alpha = Strand) +
         geom_ribbon(aes(ymax = Coverage), ymin = 0) +
         scale_x_genomic(multiplier = 1e3) +
-        scale_y_continuous(labels = scales::comma, breaks = y_extrema) +
+        scale_y_continuous(labels = y_labels, breaks = y_extrema) +
         scale_alpha_manual(values = c(`-` = 0.75, `+` = 1), guide = FALSE) +
         scale_fill_manual(NULL, values = type_colors, guide = FALSE) +
         facet_grid(Library ~ ., scales = 'free_y') +
