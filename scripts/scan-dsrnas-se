@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+
+set -e
+
+cleanup() {
+    rm -f "$plusfile"
+    rm -f "$minusfile"
+}
+
+usage() {
+    echo >&2 "Usage:"
+    echo >&2
+    echo >&2 "  $0 -m \$mate \$bamfile \$outfile"
+    echo >&2
+    echo >&2 "Options:"
+    echo >&2 "  -m,--mate The mate (1 or 2; default 1)."
+}
+
+plusflag=0x63
+minusflag=0x53
+
+if [[ "$1" == '-m' || "$1" == '--mate' ]]; then
+    shift
+    if [[ "$1" == 1 ]]; then
+        :
+    elif [[ "$1" == 2 ]]; then
+        plusflag=0xa3
+        minusflag=0x93
+    else
+        echo >&2 'ERROR: Invalid value for option `--mate`'
+        exit 1
+    fi
+    shift
+fi
+
+if [ $# -ne 2 ]; then
+    echo >&2 'ERROR: wrong number of arguments'
+    echo >&2
+    usage
+    exit 1
+fi
+
+bamfile="$1"
+outfile="$2"
+
+trap cleanup EXIT
+
+plusfile="$(mktemp)"
+# echo >&2 "plusfile	$plusfile"
+samtools view -f $plusflag -bo "$plusfile" "$bamfile"
+
+minusfile="$(mktemp)"
+# echo >&2 "minusfile	$minusfile"
+samtools view -f $minusflag -bo "$minusfile" "$bamfile"
+
+# We require a minimum overlap of 25bp. Given that we also require at most 100bp
+# extent on either end of the dsRNA, this comes down to 25bp / 225bp = 0.11….
+bedtools intersect -wo -bed -a "$plusfile" -b "$minusfile" \
+| awk '
+    BEGIN {OFS="\t"}
+    $19 >= 25 && ($3 - $2 - $19 < 100) && ($15 - $14 - $19 < 100) {
+        print $1, $2, $3, $14, $15, $19
+    }' \
+> "$outfile"
