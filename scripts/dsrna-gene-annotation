@@ -1,0 +1,46 @@
+# Input files are generated via:
+#
+#     # Make gene-level annotation
+#     awk '$3 == "gene"' ../shared/annotation/apis_mellifera-viruses/Apis_mellifera.GCA_000002195.1.32-viruses.gtf > data/gene-only-annotation.gtf
+#     for file in data/dsrna/*-1.tsv; do
+#         cat $file ${file/-1./-2.} \
+#         | awk 'BEGIN {OFS="\t"} $6 <= 100 {print $1, ($2 > $4) ? $2 : $4, ($3 < $5) ? $3 : $5}' \
+#         > ${file/-1.tsv/-merged.bed}
+#     done
+#
+#     for file in data/dsrna/*-merged.bed; do
+#         bedtools intersect -loj -a $file -b data/gene-only-annotation.gtf \
+#         > ${file/merged.bed/annotation-merged.tsv}
+#     done
+#
+#     for file in data/dsrna/*-annotation-merged.tsv; do
+#         cut -f12 $file \
+#         | grep -o 'gene_id "[^"]*"\|^\.$' \
+#         | sort \
+#         | uniq -c \
+#         > ${file/-annotation-merged.tsv/-gene-counts.tsv}
+#     done
+
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(readr)
+
+read_fwf_auto = function (filename, ...) {
+    first_line = readLines(filename, n = 1L)
+    col_start = regexpr('\\d ', first_line) + 1L
+    cols = fwf_widths(c(col_start, NA_integer_), c('Count', 'Gene'))
+    read_fwf(filename, col_positions = cols, ...)
+}
+
+dsrna_gene_counts = dir('data/dsrna', pattern = '.*-gene-counts\\.tsv$', full.names = TRUE) %>%
+    setNames(sub('_S\\d+_merged.*', '', basename(.))) %>%
+    map_df(read_fwf_auto, .id = 'Library') %>%
+    mutate(Gene = sub('gene_id "(.*)"', '\\1', Gene)) %>%
+    group_by(Gene) %>%
+    spread(Library, Count, fill = 0L)
+
+dsrna_gene_counts %>%
+    write_tsv('data/dsrna/dsrna-per-gene-count.xls')
+
+# vim: ft=r

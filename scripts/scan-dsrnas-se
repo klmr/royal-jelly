@@ -13,6 +13,7 @@ usage() {
     echo >&2 "  $0 -m \$mate \$bamfile \$outfile"
     echo >&2
     echo >&2 "Options:"
+    echo >&2
     echo >&2 "  -m,--mate The mate (1 or 2; default 1)."
 }
 
