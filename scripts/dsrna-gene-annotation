@@ -33,14 +33,31 @@ read_fwf_auto = function (filename, ...) {
     read_fwf(filename, col_positions = cols, ...)
 }
 
+size_factors = function (x, gene = Gene, count = Count, lib = Library) {
+    gene = enquo(gene)
+    count = enquo(count)
+    lib = enquo(lib)
+    x %>%
+        mutate(log_count = log(!! count)) %>%
+        group_by(!! gene) %>%
+        mutate(lib_mean = mean(log_count, na.rm = TRUE)) %>%
+        group_by(!! lib) %>%
+        summarize(sf = exp(median((log_count - lib_mean)[is.finite(lib_mean)])))
+}
+
 dsrna_gene_counts = dir('data/dsrna', pattern = '.*-gene-counts\\.tsv$', full.names = TRUE) %>%
     setNames(sub('_S\\d+_merged.*', '', basename(.))) %>%
     map_df(read_fwf_auto, .id = 'Library') %>%
     mutate(Gene = sub('gene_id "(.*)"', '\\1', Gene)) %>%
+    inner_join(size_factors(.), by = 'Library') %>%
+    mutate(Count = Count / sf) %>%
+    select(- sf) %>%
     group_by(Gene) %>%
-    spread(Library, Count, fill = 0L)
+    spread(Library, Count, fill = 0L) %>%
+    ungroup()
 
 dsrna_gene_counts %>%
+    mutate(Gene = ifelse(Gene == '.', 'unannotated', Gene)) %>%
     write_tsv('data/dsrna/dsrna-per-gene-count.xls')
 
 # vim: ft=r
