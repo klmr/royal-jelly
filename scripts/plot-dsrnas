@@ -1,0 +1,135 @@
+#!/usr/bin/env Rscript
+
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(readr)
+
+modules::import('klmr/ggplots', attach = TRUE)
+
+theme_set(theme_publication())
+
+# Input files are generated via:
+#
+#   for file in data/mapped-bee-only/long/*.bam; do
+#       ./scripts/scan-dsrnas-se --mate 1 $file data/dsrna/$(basename ${file%%.bam}-1.tsv)
+#   done
+#
+#   for file in data/mapped-bee-only/long/*.bam; do
+#       ./scripts/scan-dsrnas-se --mate 2 $file data/dsrna/$(basename ${file%%.bam}-2.tsv)
+#   done
+#
+#   for file in data/dsrna/*-1.tsv; do
+#       cat $file ${file/-1./-2.} | sort -u > ${file/-1./-uniq.}
+#   done
+
+data = dir('data/dsrna', pattern = '.*-uniq\\.tsv$', full.names = TRUE) %>%
+    setNames(gsub('-', '\u00AD', sub('_S\\d+_merged.*', '', basename(.)))) %>%
+    map_df(
+        readr::read_tsv,
+        col_names = c('Chr', 'Start1', 'End1', 'Start2', 'End2', 'Length'),
+        col_types = cols(col_character(), col_integer(), col_integer(), col_integer(), col_integer(), col_integer()),
+        .id = 'Library'
+    ) %>%
+    mutate(
+        Start = pmax(Start1, Start2),
+        End = pmin(End1, End2)
+    ) %>%
+    filter(Length <= 100L)
+
+# Sanity checks
+stopifnot(with(data, all(Start1 <= End1)))
+stopifnot(with(data, all(Start2 <= End2)))
+stopifnot(with(data, all(Length == End - Start)))
+
+unique_data = data %>%
+    group_by(Library, Chr, Start, End) %>%
+    summarize_all(first) %>%
+    ungroup()
+
+unique_data_first_or_last = data %>%
+    group_by(Library, Chr, End) %>%
+    summarize_all(first) %>%
+    group_by(Library, Chr, Start) %>%
+    summarize_all(first) %>%
+    ungroup()
+
+colors = setNames(viridis::viridis_pal()(5), unique(unique_data$Library))
+colors['MJ3\u00ad8\u00ad8'] = '#D02020'
+
+unique_data %>%
+    group_by(Library, Length) %>%
+    summarize(N = n()) %>%
+    mutate(Freq = N / sum(N)) %>%
+    ungroup() %>%
+    ggplot() +
+    aes(Length, Freq, color = Library) +
+    scale_color_manual(values = colors) +
+    geom_line(size = 1) +
+    labs(x = 'dsRNA fragment length', y = 'Frequency per library')
+
+ggsave('data/dsrna/length-distr-lines.pdf', width = 7, height = 4)
+
+unique_data %>%
+    # bedtools cannot deal with shy hyphens
+    mutate(Library = gsub('\u00AD', '-', Library)) %>%
+    select(Chr, Start, End, Library) %>%
+    write_tsv('data/dsrna/unique_data.bed', col_names = FALSE)
+
+# bedtools intersect -loj -a data/dsrna/unique_data.bed -b ../shared/annotation/apis_mellifera-viruses/Apis_mellifera.GCA_000002195.1.32-viruses.gtf > data/dsrna/annotated.tsv
+
+annotated = readr::read_tsv('data/dsrna/annotated.tsv', col_names = FALSE) %>%
+    select(Chr = 1, Start = 2, End = 3, Library = 4, Type = 7, Extra = 13) %>%
+    # We want gene-level statistics
+    filter(Type %in% c('gene', '.')) %>%
+    mutate(Library = gsub('-', '\u00AD', Library)) %>%
+    mutate(Biotype = stringr::str_extract(Extra, '(?<=gene_biotype ")[^"]*(?=")')) %>%
+    mutate(Gene = stringr::str_extract(Extra, '(?<=gene_id ")[^"]*(?=")')) %>%
+    select(- Extra) %>%
+    mutate(
+        Biotype = case_when(
+            Biotype == 'protein_coding' ~ 'protein\u00ADcoding',
+            is.na(Biotype) ~ 'unannotated',
+            TRUE ~ Biotype
+        )
+    )
+
+annotated_summary = annotated %>%
+    group_by(Library) %>%
+    summarize(Count = list(table(Biotype))) %>%
+    mutate(Biotype = lapply(Count, names)) %>%
+    unnest() %>%
+    group_by(Library) %>%
+    mutate(Fraction = Count / sum(Count)) %>%
+    ungroup() %>%
+    mutate(Biotype = reorder(Biotype, Fraction)) %>%
+    select(Library, Biotype, Fraction)
+
+annotated_summary %>%
+    filter(Fraction > 0.01) %>%
+    ggplot() +
+    aes(Library, Fraction, fill = Biotype) +
+    geom_col(position = 'fill') +
+    coord_flip() +
+    scale_y_continuous(labels = scales::percent) +
+    scale_fill_brewer('', type = 'qual', palette = 6) +
+    theme(legend.position = 'bottom', panel.grid.major.x = element_line())
+
+ggsave('data/dsrna/dsrna-annotations-bars.pdf', width = 7, height = 4)
+
+annotated_summary %>%
+    filter(Fraction > 0.01) %>%
+    mutate(Library = gsub('\u00AD', '-', Library)) %>%
+    mutate(Fraction = sprintf('%0.0f%%', Fraction * 100)) %>%
+    write_tsv('data/dsrna/annotated-summary.xls')
+
+hits_per_gene = annotated %>%
+    group_by(Gene, Library) %>%
+    summarize(Count = n()) %>%
+    spread(Library, Count, fill = 0L)
+
+hits_per_gene %>%
+    `colnames<-`(gsub('\u00AD', '-', colnames(.))) %>%
+    write_tsv('data/dsrna/dsrna-per-gene.xls')
+
+# vim: ft=r
