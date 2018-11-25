@@ -56,7 +56,18 @@ dsrna_gene_counts = dir('data/dsrna', pattern = '.*-gene-counts\\.tsv$', full.na
     spread(Library, Count, fill = 0L) %>%
     ungroup()
 
+trna_annotation = read_tsv(
+        'data/gene-only-annotation.gtf',
+        col_types = cols(.default = col_character()),
+        col_names = FALSE
+    ) %>%
+    select(Annotation = 9) %>%
+    filter(grepl('gene_biotype "tRNA"', Annotation, fixed = TRUE)) %>%
+    extract(Annotation, 'Gene', 'gene_id "([^"]*)"', remove = FALSE) %>%
+    extract(Annotation, 'tRNA-isotype', 'gene_name "tRNA-([^"]*)"')
+
 dsrna_gene_counts %>%
+    left_join(trna_annotation, by = 'Gene') %>%
     mutate(Gene = ifelse(Gene == '.', 'unannotated', Gene)) %>%
     write_tsv('data/dsrna/dsrna-per-gene-count.xls')
 
