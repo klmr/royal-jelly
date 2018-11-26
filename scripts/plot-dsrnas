@@ -73,17 +73,26 @@ unique_data_first_or_last = data %>%
 colors = setNames(viridis::viridis_pal()(5), unique(unique_data$Library))
 colors['MJ3\u00ad8\u00ad8'] = '#D02020'
 
-p = unique_data %>%
+summary = unique_data %>%
     group_by(Library, Length) %>%
     summarize(Count = n()) %>%
     mutate(Fraction = Count / sum(Count)) %>%
-    ungroup() %>%
+    ungroup()
+
+plot = summary %>%
     ggplot() +
     aes(Length, Fraction, color = Library) +
     scale_color_manual(values = colors) +
     scale_y_continuous(labels = scales::percent) +
-    geom_line(size = 1) +
     labs(x = 'dsRNA fragment length', y = 'Fraction per library (%)')
+
+p = plot +
+    geom_point(size = 1) +
+    geom_line(size = 0.5, alpha = 0.5)
+
+ggsave('data/dsrna/length-distr-points.pdf', p, width = 7, height = 4)
+
+p = plot + geom_line(size = 1)
 
 ggsave('data/dsrna/length-distr-lines.pdf', p, width = 7, height = 4)
 

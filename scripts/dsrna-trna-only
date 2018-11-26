@@ -1,0 +1,62 @@
+#!/usr/bin/env Rscript
+
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(readr)
+
+modules::import('klmr/ggplots', attach = TRUE)
+
+theme_set(theme_publication())
+
+data = dir('data/dsrna', pattern = '.*-annotation-merged\\.tsv$', full.names = TRUE) %>%
+    setNames(gsub('-', '\u00AD', sub('_S\\d+_merged.*', '', basename(.)))) %>%
+    map_df(
+        read_tsv,
+        col_names = FALSE,
+        .id = 'Library'
+    ) %>%
+    select(Library = Library, Chr = 2L, Start = 3L, End = 4L, Annotation = 13L) %>%
+    filter(grepl('gene_biotype "tRNA"', Annotation, fixed = TRUE)) %>%
+    extract(Annotation, 'Gene', 'gene_id "([^"]*)"', remove = FALSE) %>%
+    extract(Annotation, 'Isotype', 'gene_name "tRNA-([^"]*)"') %>%
+    distinct() %>%
+    mutate(Length = End - Start)
+
+colors = setNames(viridis::viridis_pal()(5), unique(data$Library))
+colors['MJ3\u00ad8\u00ad8'] = '#D02020'
+
+summary = data %>%
+    group_by(Library, Length) %>%
+    summarize(Count = n()) %>%
+    mutate(Fraction = Count / sum(Count)) %>%
+    ungroup()
+
+plot = summary %>%
+    ggplot() +
+    aes(Length, Fraction, color = Library) +
+    scale_color_manual(values = colors) +
+    scale_y_continuous(labels = scales::percent) +
+    labs(x = 'dsRNA fragment length', y = 'Fraction per library (%)')
+
+p = plot +
+    geom_point(size = 1) +
+    geom_line(size = 0.5, alpha = 0.5)
+
+ggsave('data/dsrna/trna-length-distr-points.pdf', p, width = 7, height = 4)
+
+p = plot + geom_line(size = 1)
+
+ggsave('data/dsrna/trna-length-distr-lines.pdf', p, width = 7, height = 4)
+
+p = summary %>%
+    ggplot() +
+    aes(Length, Count, color = Library) +
+    scale_color_manual(values = colors) +
+    geom_point(size = 1) +
+    geom_line(size = 0.5, alpha = 0.5) +
+    labs(x = 'dsRNA fragment length', y = 'Count per library')
+
+ggsave('data/dsrna/trna-length-count-points.pdf', p, width = 7, height = 4)
+
+# vim: ft=r
